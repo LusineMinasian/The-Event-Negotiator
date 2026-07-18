@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""
+    elevenlabs_intake_agent_id: str = ""  # conversational agent for the voice intake studio (falls back to agent_id)
     elevenlabs_phone_number_id: str = ""
     elevenlabs_webhook_secret: str = ""  # if set, the post-call webhook requires a matching x-webhook-secret header
     public_base_url: str = ""

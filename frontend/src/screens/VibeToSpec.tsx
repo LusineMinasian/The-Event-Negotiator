@@ -46,9 +46,9 @@ export default function VibeToSpec() {
   return (
     <div className="container themed">
       <Stepper step={2} />
-      <h1>Turn your vibe into a spec</h1>
-      <p className="sub">Drop an inspiration board — the palette recolors this page (that's the vision model reading your board),
-        and the structured spec fills in on the right. Both intake paths write the same job spec.</p>
+      <h1>Review &amp; complete your spec</h1>
+      <p className="sub">Your voice intake already seeded the palette and the vibe. Add more inspiration if you like,
+        then fill in the last details on the right — every path writes one structured job spec.</p>
 
       <div className="two-pane">
         <div>
@@ -73,10 +73,10 @@ export default function VibeToSpec() {
             )}
           </div>
           <div className="card pad" style={{ marginTop: 16 }}>
-            <h3>Voice interview</h3>
-            <p className="small">In live mode this launches the ElevenLabs intake agent (WebRTC). It asks what a
-              professional estimator would, and fills the same spec — fields tagged by source.</p>
-            <button className="btn ghost sm" disabled>🎙 Start voice interview (live mode)</button>
+            <h3>Where this came from</h3>
+            <p className="small">The palette and vibe here were captured in the voice studio (step 1) — by the
+              browser recognizer, or the ElevenLabs intake agent when live. Drop another board above to blend
+              in more colors; everything merges into the same spec.</p>
           </div>
         </div>
 
@@ -102,6 +102,19 @@ export default function VibeToSpec() {
             <input type="number" value={bud.total_ceiling}
                    onChange={(e) => save({ ...payload, budget: { ...bud, total_ceiling: +e.target.value } })} />
           </div>
+          {payload.intake && ((payload.intake.keywords?.length || 0) > 0 || (payload.intake.colors?.length || 0) > 0) && (
+            <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+              <div className="small" style={{ marginBottom: 6 }}>From your voice intake</div>
+              <div className="bubble-grid">
+                {(payload.intake.colors || []).map((hex: string, i: number) => (
+                  <span key={`c${i}`} className="bubble color" style={{ background: hex, padding: "4px 10px", fontSize: 12 }}>{hex}</span>
+                ))}
+                {(payload.intake.keywords || []).map((k: string, i: number) => (
+                  <span key={`k${i}`} className="bubble" style={{ padding: "4px 10px", fontSize: 12 }}><span style={{ opacity: 0.5 }}>#</span>{k}</span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="spec-row"><span>Categories</span><span>{payload.categories.map((c: any) => c.key).join(", ")}</span></div>
           <div className="spec-row"><span>Region</span><span>{loc.region_profile.toUpperCase()}</span></div>
           <div className="spec-row"><span>Est. per guest</span>

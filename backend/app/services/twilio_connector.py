@@ -69,6 +69,32 @@ async def place_call(to_number: str, twiml: str, status_callback: str | None = N
         return r.json()
 
 
+async def verify_connection() -> dict:
+    """Best-effort health check for the preflight panel. Confirms the Twilio account
+    is reachable with the given SID/token and that an outbound caller-id is set. Never
+    raises — returns a structured status the UI renders."""
+    status = {
+        "configured": bool(settings.twilio_account_sid and settings.twilio_auth_token),
+        "from_number": settings.twilio_from_number or "",
+        "connected": False,
+        "account_status": "",
+        "error": "",
+    }
+    if not (settings.twilio_account_sid and settings.twilio_auth_token):
+        status["error"] = "TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set."
+        return status
+    try:
+        url = f"{TWILIO_API}/Accounts/{settings.twilio_account_sid}.json"
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(url, headers=_auth_header())
+            r.raise_for_status()
+            status["account_status"] = r.json().get("status", "")
+            status["connected"] = True
+    except Exception as exc:  # noqa: BLE001 — health check must not crash the panel
+        status["error"] = str(exc)[:200]
+    return status
+
+
 async def fetch_recording(call_sid: str) -> str | None:
     url = f"{TWILIO_API}/Accounts/{settings.twilio_account_sid}/Calls/{call_sid}/Recordings.json"
     async with httpx.AsyncClient(timeout=20) as client:

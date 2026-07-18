@@ -76,6 +76,10 @@ export const api = {
 
   // integrations
   elevenlabsStatus: () => req("GET", "/integrations/elevenlabs"),
+  preflight: () => req("GET", "/integrations/preflight"),
+  intakeSignedUrl: () => req("GET", "/integrations/elevenlabs/intake-signed-url"),
+  inspirationLink: (specId: string, url: string) =>
+    req("POST", `/specs/${specId}/inspiration/link`, { url }),
 };
 
 export function campaignSocketUrl(campaignId: string): string {

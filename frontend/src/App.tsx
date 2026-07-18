@@ -15,6 +15,7 @@ import Receipt from "./screens/Receipt";
 import Postmortem from "./screens/Postmortem";
 import ConfigSwitch from "./screens/ConfigSwitch";
 import SegmentStudio from "./screens/SegmentStudio";
+import SystemCheck from "./screens/SystemCheck";
 
 function TopBar() {
   const { user, logout } = useAuth();
@@ -31,6 +32,7 @@ function TopBar() {
         <NavLink to="/" end>Events</NavLink>
         <NavLink to="/config">Config Switch</NavLink>
         <NavLink to="/segments">Segment Studio</NavLink>
+        <NavLink to="/system-check">System Check</NavLink>
       </nav>
       <div className="spacer" />
       {mode && (
@@ -72,6 +74,7 @@ export default function App() {
       <Route path="/campaign/:campaignId/postmortem" element={<Protected><Postmortem /></Protected>} />
       <Route path="/config" element={<Protected><ConfigSwitch /></Protected>} />
       <Route path="/segments" element={<Protected><SegmentStudio /></Protected>} />
+      <Route path="/system-check" element={<Protected><SystemCheck /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

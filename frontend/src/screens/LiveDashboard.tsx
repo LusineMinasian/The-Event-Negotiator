@@ -124,7 +124,7 @@ export default function LiveDashboard() {
       <div className="kpi-grid">
         <Kpi n={k ? `${k.calls_active}` : "—"} l="Active calls" sub={k ? `${k.calls_completed} completed` : ""} />
         <Kpi n={k ? `${k.quotes}` : "—"} l="Quotes secured" />
-        <Kpi n={k ? money(k.total_saved) : "—"} l="Negotiated savings" accent="var(--good)" />
+        <Kpi n={k ? money(k.total_saved) : "—"} l="Negotiated down" sub="across all calls" accent="var(--good)" />
         <Kpi n={k ? `${k.avg_saving_pct}%` : "—"} l="Avg reduction" accent="var(--good)" />
         <Kpi n={k ? `${k.budget.pct}%` : "—"} l="Budget used"
              sub={k ? `${money(k.budget.spent)} / ${money(k.budget.ceiling)}` : ""}
@@ -136,7 +136,7 @@ export default function LiveDashboard() {
         <div className="dash-left">
           <div className="card pad">
             <div className="card-head">
-              <h3>Cumulative savings</h3>
+              <h3>Negotiation movement</h3>
               <span className="mono" style={{ fontWeight: 700, color: "var(--good)", fontSize: 18 }}>
                 {money(k?.total_saved)}
               </span>
@@ -149,7 +149,7 @@ export default function LiveDashboard() {
 
           <div className="grid cols-2">
             <div className="card pad">
-              <h3>Savings by category</h3>
+              <h3>Negotiated by category</h3>
               <Bars rows={catRows} format={money} />
             </div>
             <div className="card pad">

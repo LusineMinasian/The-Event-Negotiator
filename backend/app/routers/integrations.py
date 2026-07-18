@@ -13,13 +13,15 @@ fans events onto an in-memory bus keyed by a campaign id it must carry.
 """
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..auth import current_user
 from ..config import settings
 from ..db import SessionLocal
 from ..models import Campaign, User
-from ..services import elevenlabs_connector
+from ..services import elevenlabs_connector, google_connector, twilio_connector
 from ..services.event_bus import bus
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
@@ -28,6 +30,86 @@ router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 @router.get("/elevenlabs")
 async def elevenlabs_status(user: User = Depends(current_user)) -> dict:
     return await elevenlabs_connector.verify_connection()
+
+
+@router.get("/elevenlabs/intake-signed-url")
+async def intake_signed_url(user: User = Depends(current_user)) -> dict:
+    """Signed WebSocket URL for the conversational intake agent (the voice studio).
+    Returns configured:false when no key/agent is set so the UI can fall back to the
+    browser's own speech recognition."""
+    agent_id = settings.elevenlabs_intake_agent_id or settings.elevenlabs_agent_id
+    if not (settings.elevenlabs_api_key and agent_id):
+        return {"configured": False, "reason": "ELEVENLABS_API_KEY / agent id not set"}
+    try:
+        url = await elevenlabs_connector.get_signed_url(agent_id)
+        return {"configured": True, "agent_id": agent_id, "signed_url": url}
+    except Exception as exc:  # noqa: BLE001
+        return {"configured": False, "reason": str(exc)[:200]}
+
+
+@router.get("/preflight")
+async def preflight(user: User = Depends(current_user)) -> dict:
+    """Actually exercise every outbound integration and report per-check status, so you
+    can see — before a demo — whether real calls will work. Runs the live API probes
+    concurrently. Each check is ok | fail | not_configured."""
+    el, tw, gg = await asyncio.gather(
+        elevenlabs_connector.verify_connection(),
+        twilio_connector.verify_connection(),
+        google_connector.verify_connection(),
+    )
+
+    def state(configured: bool, connected: bool) -> str:
+        if not configured:
+            return "not_configured"
+        return "ok" if connected else "fail"
+
+    checks = [
+        {
+            "id": "elevenlabs",
+            "name": "ElevenLabs Agents",
+            "status": state(el["configured"], el["connected"]),
+            "detail": (f"Agent “{el['agent_name']}” · {len(el['phone_numbers'])} phone number(s)"
+                       if el["connected"] else el.get("error", "")),
+            "fix": "Set ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID.",
+            "meta": {"agent_name": el.get("agent_name", ""), "phone_numbers": el.get("phone_numbers", [])},
+        },
+        {
+            "id": "elevenlabs_phone",
+            "name": "Caller phone number",
+            "status": ("ok" if el["connected"] and (settings.elevenlabs_phone_number_id or el.get("phone_numbers"))
+                       else ("not_configured" if not el["configured"] else "fail")),
+            "detail": (f"{len(el.get('phone_numbers', []))} number(s) linked to the agent"
+                       if el.get("phone_numbers") else
+                       ("Set ELEVENLABS_PHONE_NUMBER_ID / link a number in Convai" if el["configured"] else "")),
+            "fix": "In ElevenLabs → Conversational AI → Phone numbers, link a Twilio number to the agent; set ELEVENLABS_PHONE_NUMBER_ID.",
+        },
+        {
+            "id": "twilio",
+            "name": "Twilio Voice",
+            "status": state(tw["configured"], tw["connected"]),
+            "detail": (f"Account {tw['account_status']} · caller-id {tw['from_number'] or '— not set'}"
+                       if tw["connected"] else tw.get("error", "")),
+            "fix": "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER.",
+        },
+        {
+            "id": "google_places",
+            "name": "Google Places (discovery)",
+            "status": state(gg["configured"], gg["connected"]),
+            "detail": ("Live market search enabled" if gg["connected"] else gg.get("error", "")),
+            "fix": "Set GOOGLE_PLACES_API_KEY (Places API v1 enabled).",
+        },
+    ]
+
+    # can we actually place a real outbound call end to end?
+    can_call = (settings.call_mode == "live" and el["connected"] and
+                bool(settings.elevenlabs_phone_number_id or el.get("phone_numbers")))
+    return {
+        "call_mode": settings.call_mode,
+        "can_place_live_calls": can_call,
+        "summary": ("Ready to place real calls" if can_call else
+                    "Running in simulation — add credentials above to enable live calls"),
+        "checks": checks,
+    }
 
 
 def _campaign_id(body: dict) -> str:

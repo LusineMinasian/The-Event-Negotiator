@@ -1,4 +1,8 @@
+import re
+
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..auth import current_user
@@ -9,6 +13,16 @@ from ..schemas import SpecPatchIn
 from ..services import spec_builder
 
 router = APIRouter(prefix="/api/specs", tags=["specs"])
+
+
+class InspirationLinkIn(BaseModel):
+    url: str
+
+
+_OG_IMAGE_RE = re.compile(
+    r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]+content=["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
 
 
 def _load(spec_id: str, user: User, db: Session) -> Spec:
@@ -37,6 +51,11 @@ def patch_spec(spec_id: str, body: SpecPatchIn, user: User = Depends(current_use
         raise HTTPException(409, "Spec is frozen; create a new version to edit")
     merged = {**spec.payload, **body.payload}
     spec.payload = merged
+    # keep the theme_tokens column in sync so a palette captured by voice (not just an
+    # uploaded board) carries through and recolors the rest of the flow.
+    tokens = (merged.get("style") or {}).get("theme_tokens")
+    if tokens:
+        spec.theme_tokens = tokens
     db.commit()
     return {"spec_id": spec.id, "payload": spec.payload}
 
@@ -62,6 +81,60 @@ async def upload_board(spec_id: str, file: UploadFile = File(...),
     spec.theme_tokens = tokens
     db.commit()
     return {"palette": pal, "theme_tokens": tokens}
+
+
+@router.post("/{spec_id}/inspiration/link")
+async def inspiration_link(spec_id: str, body: InspirationLinkIn,
+                           user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Accept an inspiration URL (e.g. a Pinterest board/pin), fetch its preview image
+    server-side, extract a palette, and record it as an inspiration source on the spec.
+    Best-effort: many boards expose an og:image; if none is reachable we still store the
+    link so it flows into the final planning."""
+    spec = _load(spec_id, user, db)
+    if spec.confirmed_at:
+        raise HTTPException(409, "Spec is frozen; create a new version to edit")
+    url = body.url.strip()
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "Provide a full http(s) URL")
+
+    pal: list[dict] = []
+    image_url = ""
+    error = ""
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; EventNegotiator/1.0)"}
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True, headers=headers) as client:
+            page = await client.get(url)
+            if page.headers.get("content-type", "").startswith("image/") and page.content:
+                # the link is itself an image
+                image_url = url
+                pal = palette.extract_palette(page.content)
+            else:
+                m = _OG_IMAGE_RE.search(page.text)
+                if m:
+                    image_url = m.group(1).replace("&amp;", "&")
+                    img = await client.get(image_url)
+                    if img.status_code == 200 and img.content:
+                        pal = palette.extract_palette(img.content)
+    except Exception as exc:  # noqa: BLE001 — never fail the intake on a bad link
+        error = str(exc)[:200]
+
+    payload = dict(spec.payload)
+    style = dict(payload.get("style", {}))
+    sources = list(style.get("inspiration_sources", []))
+    sources.append({"type": "link", "url": url, "image_url": image_url, "palette": pal})
+    style["inspiration_sources"] = sources
+    if pal:
+        # first successful link seeds the theme if none set yet
+        if not style.get("palette"):
+            style["palette"] = pal
+            tokens = palette.generate_theme_tokens(pal)
+            style["theme_tokens"] = tokens
+            spec.theme_tokens = tokens
+    payload["style"] = style
+    spec.payload = payload
+    db.commit()
+    return {"url": url, "image_url": image_url, "palette": pal,
+            "theme_tokens": spec.theme_tokens, "error": error}
 
 
 @router.post("/{spec_id}/confirm")
