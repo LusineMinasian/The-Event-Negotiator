@@ -31,6 +31,7 @@ export default function CreateEvent() {
   const [country, setCountry] = useState(() => detectCountry());
   const [city, setCity] = useState("");
   const [cityFocus, setCityFocus] = useState(false);
+  const [cityMenu, setCityMenu] = useState<{ top: number; left: number; width: number } | null>(null);
   const [guests, setGuests] = useState(50);
   const [date, setDate] = useState("");
   const [budget, setBudget] = useState(15000);
@@ -44,8 +45,11 @@ export default function CreateEvent() {
   const [elReady, setElReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [docSummary, setDocSummary] = useState("");
 
   const bid = useRef(0);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const briefInput = useRef<HTMLInputElement>(null);
   const imageFiles = useRef<Record<string, File>>({});
   const pinUrls = useRef<string[]>([]);
   const transcript = useRef<string[]>([]);
@@ -64,11 +68,28 @@ export default function CreateEvent() {
   }, []);
   useEffect(() => { const tk = buildThemeTokens(colors); if (tk) applyTheme(tk); else clearTheme(); }, [colors]);
 
+  // Anchor the city dropdown right under the input with fixed positioning, so it floats
+  // above everything (footer, other cards) and never gets clipped by the scroll area.
+  const placeCityMenu = () => {
+    const r = cityInputRef.current?.getBoundingClientRect();
+    if (r) setCityMenu({ top: r.bottom + 6, left: r.left, width: r.width });
+  };
+  useEffect(() => {
+    if (!cityFocus) return;
+    placeCityMenu();
+    const upd = () => placeCityMenu();
+    window.addEventListener("scroll", upd, true);
+    window.addEventListener("resize", upd);
+    return () => { window.removeEventListener("scroll", upd, true); window.removeEventListener("resize", upd); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cityFocus]);
+
   const go = (to: number) => { setDir(to > step ? 1 : -1); setStep(Math.max(0, Math.min(STEPS.length - 1, to))); setErr(""); };
   const back = () => (step === 0 ? nav("/") : go(step - 1));
 
   const chooseType = (t: (typeof TYPES)[number]) => {
-    setType(t.key); setGuests(t.guests); setBudget(Math.round(t.guests * t.perGuest / 500) * 500);
+    setType(t.key); setGuests(t.guests);
+    setBudget(Math.round(t.guests * t.perGuest * cur.scale / 500) * 500);
     go(1);
   };
 
@@ -97,6 +118,42 @@ export default function CreateEvent() {
     if (elReady) { if (el.active) return el.stop(); const r = await api.intakeSignedUrl(); r.configured ? el.start(r.signed_url) : (setElReady(false), speech.start()); return; }
     if (!speech.supported) { setErr("Voice needs Google Chrome — or just type the details ahead."); return; }
     speech.listening ? speech.stop() : speech.start();
+  };
+
+  // Document intake: apply parsed brief fields into the same wizard state as voice.
+  const applyDocFields = (f: any) => {
+    if (f.event_type) setType(f.event_type);
+    if (f.date) setDate(f.date);
+    if (f.guest_count) setGuests(f.guest_count);
+    if (f.city) setCity(f.city);
+    if (f.country_code) {
+      const nc = countryByCode(f.country_code);
+      const oldScale = countryByCode(country).scale;
+      if (nc.scale !== oldScale) setBudget((b) => Math.round(b * nc.scale / oldScale / 500) * 500);
+      setCountry(f.country_code);
+    }
+    if (f.budget) setBudget(f.budget);
+    (f.colors || []).forEach((hex: string, i: number) =>
+      addBubble({ kind: "color", label: (f.color_names && f.color_names[i]) || hex, hex }));
+    if ((f.colors || []).length) addColors(f.colors);
+    (f.keywords || []).forEach((k: string) => addBubble({ kind: "keyword", label: k }));
+    transcript.current.push([f.event_type, f.city, `${f.guest_count || ""} guests`, ...(f.keywords || [])].filter(Boolean).join(" "));
+    setDocSummary(`${(f.event_type || "event").replace("_", " ")} · ${f.guest_count || "?"} guests · ${f.city || ""}`.trim());
+    setErr("");
+  };
+  const onBriefFile = async (file: File) => {
+    try {
+      const r = await api.parseDocument(file);
+      if (r.fields && r.fields.event_type) applyDocFields(r.fields);
+      else setErr("Couldn't read that document — try a clearer photo or type the details.");
+    } catch { setErr("Couldn't read the document."); }
+  };
+  const useExample = async (name: string) => {
+    try {
+      const resp = await fetch(`/brief-examples/${name}.png`);
+      const blob = await resp.blob();
+      onBriefFile(new File([blob], `${name}.png`, { type: "image/png" }));
+    } catch { setErr("Couldn't load the example."); }
   };
 
   const onFiles = (list: FileList | null) => {
@@ -264,6 +321,28 @@ export default function CreateEvent() {
                   <button key={x} className="try-chip" onClick={() => ingest(x)}>{x}</button>
                 ))}
               </div>
+
+              {/* document intake — upload a brief and we read it into the same spec */}
+              <div className="doc-intake mt-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="section-eyebrow" style={{ margin: 0 }}>Have a brief?</span>
+                  <button className="btn ghost sm" onClick={() => briefInput.current?.click()}>📄 Upload document</button>
+                  <input ref={briefInput} type="file" accept="image/*,application/pdf" hidden
+                         onChange={(e) => { const f = e.target.files?.[0]; if (f) onBriefFile(f); }} />
+                  <span className="small">or an example:</span>
+                  {[["wedding-yerevan", "Wedding"], ["birthday-sf", "Birthday"], ["baby-shower-berlin", "Baby shower"]].map(([file, label]) => (
+                    <button key={file} className="try-chip" onClick={() => useExample(file)}>{label}</button>
+                  ))}
+                </div>
+                {docSummary && (
+                  <div className="small mt-2 flex items-center gap-2" style={{ color: "var(--good)" }}>
+                    <span aria-hidden>✓</span> Read from document — <b>{docSummary}</b>
+                  </div>
+                )}
+                <div className="small mt-1" style={{ color: "var(--muted)" }}>
+                  Photos, existing quotes or bills are parsed by OCR / vision into the same job spec.
+                </div>
+              </div>
             </>
           )}
 
@@ -295,19 +374,24 @@ export default function CreateEvent() {
                   <div className="country-row">
                     {COUNTRIES.map((c) => (
                       <button key={c.code} className={`country-chip ${country === c.code ? "on" : ""}`}
-                              onClick={() => { setCountry(c.code); setCity(""); }} title={c.name}>
+                              onClick={() => {
+                                const oldScale = countryByCode(country).scale;
+                                if (c.scale !== oldScale) setBudget((b) => Math.round(b * c.scale / oldScale / 500) * 500);
+                                setCountry(c.code); setCity("");
+                              }} title={c.name}>
                         <span style={{ fontSize: 18 }}>{c.flag}</span> {c.code}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div style={{ position: "relative" }}>
+                <div>
                   <label>City</label>
-                  <input placeholder={`e.g. ${citiesFor(country)[0] || "your city"}`} value={city}
-                         onChange={(e) => setCity(e.target.value)} onFocus={() => setCityFocus(true)}
+                  <input ref={cityInputRef} placeholder={`e.g. ${citiesFor(country)[0] || "your city"}`} value={city}
+                         onChange={(e) => { setCity(e.target.value); placeCityMenu(); }}
+                         onFocus={() => { setCityFocus(true); placeCityMenu(); }}
                          onBlur={() => setTimeout(() => setCityFocus(false), 150)} />
-                  {cityFocus && citySuggest.length > 0 && (
-                    <div className="city-menu">
+                  {cityFocus && citySuggest.length > 0 && cityMenu && (
+                    <div className="city-menu" style={{ position: "fixed", top: cityMenu.top, left: cityMenu.left, width: cityMenu.width }}>
                       {citySuggest.map((c) => (
                         <div key={c} className="city-opt" onMouseDown={() => { setCity(c); setCityFocus(false); }}>{c}</div>
                       ))}
@@ -324,7 +408,8 @@ export default function CreateEvent() {
               <p className="wiz-sub">A ceiling for the whole event — the agents negotiate to stay under it.</p>
               <div className="budget-display">{money(budget)}</div>
               <div className="small" style={{ textAlign: "center", marginBottom: 18 }}>≈ {money(perGuest)} per guest · {guests} guests</div>
-              <input type="range" className="range" min={1000} max={type === "wedding" ? 120000 : 40000} step={500}
+              <input type="range" className="range" min={1000 * cur.scale}
+                     max={(type === "wedding" ? 120000 : 40000) * cur.scale} step={500 * cur.scale}
                      value={budget} onChange={(e) => setBudget(+e.target.value)} />
               <div className="wiz-review">
                 <div className="rev-row"><span>Event</span><b className="capitalize">{type.replace("_", " ") || "—"}</b></div>

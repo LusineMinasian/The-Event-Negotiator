@@ -19,6 +19,13 @@ export default function CallDrawer({ campaignId, callId, live, onClose }: {
 
   useEffect(() => { load(); }, [callId]);
 
+  // lock the background (dashboard) from scrolling while the drawer is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   // append live utterances for this call (newest is rendered on top, no auto-scroll)
   useEffect(() => {
     if (live && live.call_id === callId) {

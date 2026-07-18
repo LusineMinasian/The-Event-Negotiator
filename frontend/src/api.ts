@@ -60,6 +60,11 @@ export const api = {
     return req("POST", `/specs/${id}/board`, fd, true);
   },
   confirmSpec: (id: string) => req("POST", `/specs/${id}/confirm`),
+  parseDocument: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req("POST", "/intake/parse-document", fd, true);
+  },
   reopenSpec: (id: string) => req("POST", `/specs/${id}/reopen`),
 
   // discovery + campaign

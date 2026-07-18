@@ -42,6 +42,9 @@ FILE MAP
       cp_flexible.txt                <- moves easily; may reclassify mid-call
 
   tools/
+    00_tool_config_reference.txt     <- ★ exact ElevenLabs tool_config JSON shape +
+                                        the 3 rules (pin ids, secret auth, validate).
+                                        READ before pasting any tool.
     tool_get_verified_leverage.txt   <- READ: what numbers the agent may cite
     tool_log_quote.txt               <- WRITE: structured quote + itemized fees
     tool_record_price_move.txt       <- WRITE: a price/term change (the realtime signal)

@@ -6,14 +6,17 @@
 export type Country = {
   code: string; name: string; flag: string;
   region_profile: string; currency: string; symbol: string;
+  // budget scale vs USD/CHF (~1) so slider amounts stay realistic in the local currency
+  scale: number;
 };
 
 export const COUNTRIES: Country[] = [
-  { code: "US", name: "United States", flag: "🇺🇸", region_profile: "us_ca", currency: "USD", symbol: "$" },
-  { code: "CA", name: "Canada", flag: "🇨🇦", region_profile: "us_ca", currency: "USD", symbol: "$" },
-  { code: "CH", name: "Switzerland", flag: "🇨🇭", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF " },
-  { code: "DE", name: "Germany", flag: "🇩🇪", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF " },
-  { code: "AT", name: "Austria", flag: "🇦🇹", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF " },
+  { code: "US", name: "United States", flag: "🇺🇸", region_profile: "us_ca", currency: "USD", symbol: "$", scale: 1 },
+  { code: "CA", name: "Canada", flag: "🇨🇦", region_profile: "us_ca", currency: "USD", symbol: "$", scale: 1 },
+  { code: "CH", name: "Switzerland", flag: "🇨🇭", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF ", scale: 1 },
+  { code: "DE", name: "Germany", flag: "🇩🇪", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF ", scale: 1 },
+  { code: "AT", name: "Austria", flag: "🇦🇹", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF ", scale: 1 },
+  { code: "AM", name: "Armenia", flag: "🇦🇲", region_profile: "eu_de_ch", currency: "AMD", symbol: "֏ ", scale: 400 },
 ];
 
 export const CITIES: Record<string, string[]> = {
@@ -27,6 +30,8 @@ export const CITIES: Record<string, string[]> = {
   DE: ["Berlin", "Munich", "Hamburg", "Cologne", "Frankfurt", "Stuttgart", "Düsseldorf",
     "Leipzig", "Dortmund", "Dresden", "Nuremberg", "Hanover", "Bremen", "Freiburg"],
   AT: ["Vienna", "Graz", "Linz", "Salzburg", "Innsbruck", "Klagenfurt", "Villach", "Wels", "Bregenz"],
+  AM: ["Yerevan", "Gyumri", "Vanadzor", "Vagharshapat", "Hrazdan", "Abovyan", "Kapan", "Armavir",
+    "Gavar", "Goris", "Dilijan", "Sevan", "Ijevan", "Ashtarak", "Artashat", "Jermuk", "Tsaghkadzor"],
 };
 
 export function countryByCode(code: string): Country {
@@ -55,6 +60,7 @@ export function detectCountry(): string {
     if (tz.includes("Zurich")) return "CH";
     if (tz.includes("Berlin")) return "DE";
     if (tz.includes("Vienna")) return "AT";
+    if (tz.includes("Yerevan")) return "AM";
     if (tz.startsWith("America/")) return tz.includes("Toronto") || tz.includes("Vancouver") ? "CA" : "US";
     if (tz.startsWith("Europe/")) return "DE";
   } catch { /* noop */ }

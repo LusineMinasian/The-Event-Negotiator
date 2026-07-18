@@ -265,8 +265,8 @@
   .budget-bar.over > span { background: linear-gradient(90deg, var(--warn), #f0a83a); }
 
   /* ---------- call detail drawer ---------- */
-  .drawer-overlay { @apply fixed inset-0 z-40 flex justify-end; background: rgba(15, 23, 42, 0.42); backdrop-filter: blur(2px); }
-  .drawer { @apply h-full overflow-y-auto p-[22px]; width: min(560px, 100%); background: var(--surface); box-shadow: -10px 0 40px rgba(0, 0, 0, 0.18); animation: fade-up 0.25s ease-out both; }
+  .drawer-overlay { @apply fixed inset-0 z-40 flex justify-end; background: rgba(15, 23, 42, 0.42); backdrop-filter: blur(2px); overscroll-behavior: none; }
+  .drawer { @apply h-full overflow-y-auto p-[22px]; width: min(560px, 100%); background: var(--surface); box-shadow: -10px 0 40px rgba(0, 0, 0, 0.18); animation: fade-up 0.25s ease-out both; overscroll-behavior: contain; }
   .utterance { @apply text-sm rounded-2xl px-[13px] py-[9px] my-[6px] leading-relaxed; max-width: 84%; border: 1px solid transparent; }
   .utterance.agent { color: var(--ink); background: #eef2ff; border-color: #e0e5ff; border-bottom-left-radius: 6px; }
   .utterance.vendor { color: var(--ink-2); background: #f1f5f9; margin-left: auto; border-bottom-right-radius: 6px; }
@@ -504,9 +504,9 @@
     border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: 13px; color: var(--ink-2); transition: all 0.14s; }
   .country-chip:hover { border-color: #cfd6e6; }
   .country-chip.on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, #fff); color: var(--ink); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 14%, transparent); }
-  .city-menu { position: absolute; left: 16px; right: 16px; top: 100%; margin-top: 6px; z-index: 30;
-    background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--lift);
-    max-height: 220px; overflow-y: auto; }
+  .city-menu { z-index: 60; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 14px 38px rgba(26, 21, 40, 0.18); max-height: 240px; overflow-y: auto; padding: 4px; }
+  .city-opt { border-radius: 9px; }
   .city-opt { padding: 10px 14px; font-size: 14px; cursor: pointer; }
   .city-opt:hover { background: #f2ecfb; color: var(--brand); }
 
