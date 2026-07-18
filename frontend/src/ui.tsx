@@ -56,6 +56,20 @@ export function Stepper({ step, specId, campaignId }: { step: number; specId?: s
   );
 }
 
+// Handoff prompt — a compact bottom-center toast (replaces the old full-width bar).
+export function PullMeToast({ vendor, detail, onResolve }: { vendor: string; detail?: string; onResolve: () => void }) {
+  return (
+    <div className="pull-toast" role="alert">
+      <span className="pull-toast-dot" aria-hidden />
+      <div className="pull-toast-body flex-1">
+        <div className="pull-toast-title">Pull me in</div>
+        <div className="small truncate">{vendor}{detail ? ` · ${detail}` : ""}</div>
+      </div>
+      <button className="btn sm" onClick={onResolve}>Approve →</button>
+    </div>
+  );
+}
+
 export function Spinner({ size = 22 }: { size?: number }) {
   return <span className="spinner" style={{ width: size, height: size }} aria-hidden />;
 }

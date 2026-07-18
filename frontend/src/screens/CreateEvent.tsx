@@ -342,13 +342,15 @@ export default function CreateEvent() {
       </main>
 
       <footer className="wiz-footer">
-        {err && <div className="err" style={{ marginRight: "auto" }}>{err}</div>}
         <button className="btn ghost" onClick={back}>{step === 0 ? "Cancel" : "← Back"}</button>
-        {step < STEPS.length - 1 ? (
-          <button className="btn lg" onClick={() => go(step + 1)} disabled={step === 0 && !type}>Continue →</button>
-        ) : (
-          <button className="btn lg" onClick={create} disabled={busy || !type}>{busy ? "Creating…" : "Create event ✦"}</button>
-        )}
+        <div className="wiz-foot-right">
+          {err && <span className="err">{err}</span>}
+          {step < STEPS.length - 1 ? (
+            <button className="btn lg" onClick={() => go(step + 1)} disabled={step === 0 && !type}>Continue →</button>
+          ) : (
+            <button className="btn lg" onClick={create} disabled={busy || !type}>{busy ? "Creating…" : "Create event ✦"}</button>
+          )}
+        </div>
       </footer>
     </div>
   );

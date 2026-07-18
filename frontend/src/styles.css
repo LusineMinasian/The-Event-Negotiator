@@ -101,21 +101,31 @@
 
   /* ---------- buttons ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-[18px] py-[10px] rounded-xl font-semibold text-sm border border-transparent;
-    color: #fff;
+    @apply inline-flex items-center justify-center gap-2 px-[17px] py-[9px] rounded-xl font-semibold text-sm border border-transparent select-none;
+    color: #fff; line-height: 1.2; letter-spacing: -0.005em;
     background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
-    box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2), 0 8px 20px rgba(79, 70, 229, 0.24);
-    transition: transform 0.08s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    box-shadow: 0 1px 1.5px rgba(79, 70, 229, 0.16), 0 4px 12px rgba(79, 70, 229, 0.20);
+    transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease;
   }
-  .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(79, 70, 229, 0.22), 0 14px 30px rgba(79, 70, 229, 0.32); filter: brightness(1.04); }
-  .btn:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(79, 70, 229, 0.24); }
-  .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
-  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
-  .btn.ghost:hover { background: #f4f6fb; border-color: #d5dbe8; filter: none; }
-  .btn.accent { background: linear-gradient(135deg, var(--palette-accent), color-mix(in srgb, var(--palette-accent) 70%, #000 14%)); box-shadow: 0 8px 20px color-mix(in srgb, var(--palette-accent) 30%, transparent); }
-  .btn.lg { @apply px-6 py-[13px] text-[15px] rounded-[14px]; }
-  .btn.sm { @apply px-3 py-[7px] text-[13px] rounded-[10px]; }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(79, 70, 229, 0.18), 0 8px 20px rgba(79, 70, 229, 0.26); filter: brightness(1.03); }
+  .btn:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(79, 70, 229, 0.20); filter: brightness(0.98); }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 32%, transparent); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; box-shadow: none; }
+  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); box-shadow: none; }
+  .btn.ghost:hover { background: #f5f7fb; border-color: #d3dae8; filter: none; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
+  .btn.ghost:active { background: #eef1f8; transform: translateY(0); }
+  .btn.accent { background: linear-gradient(135deg, var(--palette-accent), color-mix(in srgb, var(--palette-accent) 72%, #000 12%)); box-shadow: 0 1px 1.5px color-mix(in srgb, var(--palette-accent) 22%, transparent), 0 5px 16px color-mix(in srgb, var(--palette-accent) 26%, transparent); }
+  .btn.lg { @apply px-[22px] py-[12px] text-[15px] rounded-[14px]; }
+  .btn.sm { @apply px-[13px] py-[7px] text-[13px] rounded-[10px]; }
+  /* consistent, tidy focus ring + press feedback across the smaller controls */
+  .country-chip, .preset, .try-chip, .place-link, .wiz-pip, .wiz-icon, .seg-toggle button, .topnav a {
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
+  }
+  .country-chip:focus-visible, .preset:focus-visible, .try-chip:focus-visible, .place-link:focus-visible,
+  .wiz-pip:focus-visible, .wiz-icon:focus-visible, .event-card:focus-visible, .type-card:focus-visible, .call-tile:focus-visible {
+    outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 26%, transparent);
+  }
+  .country-chip:active, .preset:active, .try-chip:active, .place-link:active, .wiz-icon:active { transform: translateY(0.5px); }
 
   /* ---------- forms ---------- */
   label { @apply block text-[13px] font-semibold mb-[6px]; color: var(--ink-2); }
@@ -289,7 +299,19 @@
   .banner { @apply px-4 py-3 rounded-xl text-[13px] mb-4; background: #fff8e8; border: 1px solid #f2e2b8; color: #8a6d1a; }
   .err { color: var(--bad); font-size: 13px; margin-top: 8px; }
   .center { @apply grid place-items-center; min-height: 60vh; color: var(--muted); }
-  .pullme { @apply fixed z-30; bottom: 24px; right: 24px; box-shadow: 0 8px 30px rgba(225, 29, 72, 0.42); animation: pulse2 1.4s infinite; }
+  /* handoff "pull me in" — a compact toast, not a full-width bar */
+  .pull-toast {
+    position: fixed; z-index: 45; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; max-width: min(440px, calc(100vw - 28px));
+    padding: 11px 12px 11px 16px; border-radius: 16px; background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--bad) 32%, var(--line));
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.18); animation: toast-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes toast-up { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .pull-toast-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex-shrink: 0;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--bad) 18%, transparent); animation: pulse2 1.5s infinite; }
+  .pull-toast-body { min-width: 0; }
+  .pull-toast-title { font-weight: 700; font-size: 14px; line-height: 1.2; }
 
   /* ---------- live command center ---------- */
   .dash-head { @apply flex justify-between items-start gap-4 flex-wrap; }
@@ -488,9 +510,12 @@
   .rev-row:last-child { border-bottom: 0; }
   .rev-row span:first-child { color: var(--muted); }
 
-  .wiz-footer { display: flex; align-items: center; gap: 12px; justify-content: flex-end; flex-shrink: 0;
-    padding: 14px 22px; padding-bottom: calc(14px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--line); background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); }
+  /* just the buttons — no full bar/strip */
+  .wiz-footer { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-shrink: 0;
+    padding: 16px 22px; padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    border-top: none; background: none; }
+  .wiz-foot-right { display: flex; align-items: center; gap: 12px; }
+  .wiz-foot-right .err { margin: 0; }
 
   /* vibe images — Pinterest-style, no filenames + soft background collage */
   .studio-stage { position: relative; overflow: hidden; }

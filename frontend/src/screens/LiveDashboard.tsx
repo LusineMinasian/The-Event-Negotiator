@@ -4,7 +4,7 @@ import { api } from "../api";
 import { clearTheme } from "../palette";
 import { useCampaignSocket, WsEvent } from "../ws";
 import { AreaChart, Bars, Donut } from "../charts";
-import { Avatar } from "../ui";
+import { Avatar, PullMeToast } from "../ui";
 import CallDrawer from "./CallDrawer";
 
 const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
@@ -275,11 +275,7 @@ export default function LiveDashboard() {
         </div>
       </div>
 
-      {handoff && (
-        <button className="btn accent lg pullme" style={{ background: "var(--bad)" }} onClick={resolveHandoff}>
-          🔴 Pull me in — {handoff.vendor_name} ({handoff.detail})
-        </button>
-      )}
+      {handoff && <PullMeToast vendor={handoff.vendor_name} detail={handoff.detail} onResolve={resolveHandoff} />}
 
       {selected && (
         <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}
