@@ -1,0 +1,33 @@
+key: catering
+display_name: Catering
+places_types: [caterer, meal_delivery, restaurant]
+places_keywords: {en: "catering"}
+normalization_unit: per_guest
+job_spec_taxonomy: [service_style, dietary, alcohol, staff_required, equipment_included]
+expected_line_items: [food, staff, delivery, equipment_rental, service_charge]
+challengeable_fees: [service_charge, delivery, equipment_rental]
+segments:
+  - catering__small_format
+  - catering__bakery_grazing
+  - catering__delivery
+  - catering__full_service
+  - catering__restaurant_offsite
+  - catering__bespoke_chef
+segment_classifier_signals:
+  - {signal: places_type, maps: {caterer: catering__full_service, restaurant: catering__restaurant_offsite, bakery: catering__bakery_grazing, meal_delivery: catering__delivery}}
+  - {signal: review_count, thresholds: {"<40": catering__bespoke_chef}}
+  - {signal: price_level, thresholds: {"4": catering__bespoke_chef, "1": catering__delivery}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: service_charge_undisclosed, severity: medium}
+  - {rule: deposit_over_50pct, severity: high}
+  - {rule: incomplete_itemization, severity: medium}
+call_objectives:
+  - "Get the per-guest price for the requested service style"
+  - "Surface every mandatory add-on fee"
+  - "Clarify deposit terms and refundability"
+  - "Lock in the quote validity period"
+diagnostic_questions:
+  - {q: "Will you personally work the event, or do you have a team?", determines: decision_maker}
+  - {q: "Do you have a minimum order?", determines: min_order_exists}
+  - {q: "Do you have fixed packages, or do you price per job?", determines: pricing_model}

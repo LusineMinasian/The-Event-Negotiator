@@ -1,0 +1,32 @@
+key: music__agency
+parent_category: music
+display_name: Entertainment agency
+applicable_events: [wedding, birthday]
+guest_range: [30, 400]
+economics:
+  cost_structure: {performer: 0.70, commission: 0.30}
+  bottleneck: performer_availability
+  capacity_perishable: false
+  min_order_exists: true
+  min_order_value: 1500
+  decision_maker: employee
+  pricing_model: package_tiers
+  margin_flexibility: medium
+levers:
+  - {key: competing_bid, weight: 0.70}
+  - {key: manager_escalation, weight: 0.60}
+  - {key: fee_challenge, weight: 0.65, note: "agency commission"}
+  - {key: tier_downgrade, weight: 0.55}
+levers_harmful:
+  - {key: relationship, reason: "The rep is not the decision maker"}
+  - {key: urgency, reason: "Agency raises rates on short notice"}
+resistance_profile:
+  opening_markup_expected: 0.30
+  typical_concession_ceiling: 0.12
+  hard_floor_signal: "performer fee"
+  stonewall_probability: 0.35
+  upsell_probability: 0.40
+counterparty:
+  style: hard
+  hidden_fees: [{label: "Agency booking fee 15%", amount_pct: 0.15, unit: percent_of_subtotal, disclosed_voluntarily: false}]
+benchmark_key: music_agency_{region_profile}

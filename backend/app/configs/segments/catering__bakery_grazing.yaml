@@ -1,0 +1,32 @@
+key: catering__bakery_grazing
+parent_category: catering
+display_name: Bakery / grazing table
+applicable_events: [baby_shower]
+guest_range: [10, 50]
+economics:
+  cost_structure: {food: 0.60, labor: 0.20, overhead: 0.20}
+  bottleneck: kitchen
+  capacity_perishable: false
+  min_order_exists: true
+  min_order_value: 500
+  decision_maker: owner
+  pricing_model: per_guest
+  margin_flexibility: low
+levers:
+  - {key: scope_reduction, weight: 0.75}
+  - {key: payment_terms, weight: 0.55}
+  - {key: relationship, weight: 0.50}
+levers_harmful:
+  - {key: volume, reason: "Small order sits below the profitability threshold"}
+  - {key: urgency, reason: "No revenue lost from an unfilled slot"}
+  - {key: tier_downgrade, reason: "No package structure to downgrade"}
+resistance_profile:
+  opening_markup_expected: 0.15
+  typical_concession_ceiling: 0.12
+  hard_floor_signal: "ingredient cost"
+  stonewall_probability: 0.10
+  upsell_probability: 0.55
+counterparty:
+  style: upseller
+  hidden_fees: [{label: "Premium grazing upgrade", amount: 240, unit: per_event}]
+benchmark_key: catering_bakery_grazing_{region_profile}

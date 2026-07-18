@@ -1,0 +1,34 @@
+key: venue__hotel_banquet
+parent_category: venue
+display_name: Hotel banquet
+applicable_events: [wedding]
+guest_range: [50, 400]
+economics:
+  cost_structure: {rental: 0.30, fnb: 0.50, overhead: 0.20}
+  bottleneck: room_and_fnb_minimum
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 5000
+  decision_maker: manager
+  pricing_model: per_guest_tiered
+  margin_flexibility: medium
+levers:
+  - {key: bundle, weight: 0.85}
+  - {key: weekday_slot, weight: 0.75}
+  - {key: off_season, weight: 0.70}
+  - {key: competing_bid, weight: 0.55}
+  - {key: manager_escalation, weight: 0.50}
+levers_harmful:
+  - {key: relationship, reason: "The manager decides by policy, not by rapport"}
+  - {key: urgency, reason: "High demand; urgency raises the rate"}
+resistance_profile:
+  opening_markup_expected: 0.20
+  typical_concession_ceiling: 0.15
+  hard_floor_signal: "F&B minimum"
+  stonewall_probability: 0.55
+  upsell_probability: 0.40
+counterparty:
+  style: stonewaller
+  # Refuses phone pricing until pressed; gives a range only after fee_challenge / manager_escalation
+  hidden_fees: [{label: "Mandatory service charge 15%", amount_pct: 0.15, unit: percent_of_subtotal, disclosed_voluntarily: false}]
+benchmark_key: venue_hotel_banquet_{region_profile}

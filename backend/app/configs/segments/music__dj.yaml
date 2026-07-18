@@ -1,0 +1,30 @@
+key: music__dj
+parent_category: music
+display_name: DJ
+applicable_events: [wedding, birthday]
+guest_range: [20, 300]
+economics:
+  cost_structure: {labor: 0.70, equipment: 0.20, overhead: 0.10}
+  bottleneck: date_slot
+  capacity_perishable: true
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: high
+levers:
+  - {key: urgency, weight: 0.70}
+  - {key: scope_reduction, weight: 0.65, note: "hours"}
+  - {key: competing_bid, weight: 0.55}
+  - {key: weekday_slot, weight: 0.55}
+levers_harmful: []
+resistance_profile:
+  opening_markup_expected: 0.20
+  typical_concession_ceiling: 0.28
+  hard_floor_signal: "my time"
+  stonewall_probability: 0.10
+  upsell_probability: 0.30
+counterparty:
+  style: flexible
+  hidden_fees: [{label: "Extra hour + travel", amount: 150, unit: per_event}]
+benchmark_key: music_dj_{region_profile}

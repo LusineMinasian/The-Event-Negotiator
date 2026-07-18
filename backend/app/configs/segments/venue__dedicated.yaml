@@ -1,0 +1,31 @@
+key: venue__dedicated
+parent_category: venue
+display_name: Dedicated venue
+applicable_events: [wedding]
+guest_range: [40, 300]
+economics:
+  cost_structure: {rental: 0.70, staff: 0.15, overhead: 0.15}
+  bottleneck: date_slot
+  capacity_perishable: true
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: high
+levers:
+  - {key: off_season, weight: 0.85}
+  - {key: weekday_slot, weight: 0.80}
+  - {key: competing_bid, weight: 0.65}
+  - {key: payment_terms, weight: 0.55}
+levers_harmful:
+  - {key: volume, reason: "Priced per date; guest count does not move the rate"}
+resistance_profile:
+  opening_markup_expected: 0.18
+  typical_concession_ceiling: 0.20
+  hard_floor_signal: "date is booked"
+  stonewall_probability: 0.20
+  upsell_probability: 0.30
+counterparty:
+  style: hard
+  hidden_fees: [{label: "Cleaning fee", amount: 350, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: venue_dedicated_{region_profile}

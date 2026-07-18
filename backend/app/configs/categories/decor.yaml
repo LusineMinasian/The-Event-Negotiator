@@ -1,0 +1,24 @@
+key: decor
+display_name: Decor
+places_types: [florist, party_store, store]
+places_keywords: {en: "event decor balloons"}
+normalization_unit: per_event
+job_spec_taxonomy: [palette, balloon_arch, backdrop, table_setting, teardown]
+expected_line_items: [materials, labor, delivery, setup, teardown]
+challengeable_fees: [delivery, setup, teardown]
+segments:
+  - decor__balloons
+  - decor__themed_set
+  - decor__props_rental
+segment_classifier_signals:
+  - {signal: places_type, maps: {florist: decor__themed_set, party_store: decor__balloons, store: decor__props_rental}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: service_charge_undisclosed, severity: medium}
+  - {rule: incomplete_itemization, severity: medium}
+call_objectives:
+  - "Get the price for the requested palette and density"
+  - "Separately surface travel, setup and teardown costs"
+  - "Confirm whether teardown is included"
+diagnostic_questions:
+  - {q: "Are travel and setup included, or priced separately?", determines: pricing_model}

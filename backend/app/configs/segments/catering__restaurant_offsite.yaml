@@ -1,0 +1,31 @@
+key: catering__restaurant_offsite
+parent_category: catering
+display_name: Restaurant off-site
+applicable_events: [wedding, birthday]
+guest_range: [20, 150]
+economics:
+  cost_structure: {food: 0.55, labor: 0.25, overhead: 0.20}
+  bottleneck: kitchen
+  capacity_perishable: false
+  min_order_exists: true
+  min_order_value: 1200
+  decision_maker: owner
+  pricing_model: per_guest
+  margin_flexibility: medium
+levers:
+  - {key: weekday_slot, weight: 0.70}
+  - {key: relationship, weight: 0.65}
+  - {key: scope_reduction, weight: 0.60}
+  - {key: competing_bid, weight: 0.55}
+levers_harmful:
+  - {key: bundle, reason: "Off-site is side revenue; bundling is not a motivator"}
+resistance_profile:
+  opening_markup_expected: 0.12
+  typical_concession_ceiling: 0.18
+  hard_floor_signal: "kitchen cost"
+  stonewall_probability: 0.15
+  upsell_probability: 0.35
+counterparty:
+  style: warm
+  hidden_fees: [{label: "Transport + on-site staff", amount: 320, unit: per_event}]
+benchmark_key: catering_restaurant_offsite_{region_profile}

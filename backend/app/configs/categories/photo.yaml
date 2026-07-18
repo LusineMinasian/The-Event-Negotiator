@@ -1,0 +1,24 @@
+key: photo
+display_name: Photo
+places_types: [photographer, photography_studio]
+places_keywords: {en: "event photographer"}
+normalization_unit: per_hour
+job_spec_taxonomy: [hours, edited_shots, style, second_shooter]
+expected_line_items: [shooting, editing, travel, extra_hour, prints]
+challengeable_fees: [travel, extra_hour, prints]
+segments:
+  - photo__lifestyle
+  - photo__hourly
+  - photo__studio_team
+segment_classifier_signals:
+  - {signal: places_type, maps: {photography_studio: photo__studio_team, photographer: photo__hourly}}
+  - {signal: review_count, thresholds: {"<40": photo__lifestyle}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: incomplete_itemization, severity: medium}
+call_objectives:
+  - "Get the hourly rate and the minimum package"
+  - "Find the number of edited shots and the delivery time"
+  - "Surface travel and extra-hour fees"
+diagnostic_questions:
+  - {q: "Do you work solo, or is it a studio with a team?", determines: decision_maker}

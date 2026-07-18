@@ -1,0 +1,18 @@
+key: eu_de_ch
+countries: [CH, DE, AT]
+currency: CHF
+currency_symbol: "CHF "
+locale_primary: de-CH
+locale_fallbacks: [de-DE, en-GB]
+phone_format: E.164
+business_hours: {mon_fri: "08:00-18:00", sat: "09:00-13:00", sun: closed}
+recording_consent: two_party
+consent_script_key: consent_de_ch
+ai_disclosure: mandatory_upfront
+discovery_sources: [google_places, osm]
+benchmark_sources: [regional_price_index, vendor_published_rates]
+off_season_months: [1, 2, 11]
+tax_handling: prices_may_exclude_vat
+free_delivery_threshold: 700
+segment_availability_overrides:
+  catering__delivery: {prevalence: low}

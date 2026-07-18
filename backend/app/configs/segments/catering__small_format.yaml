@@ -1,0 +1,33 @@
+key: catering__small_format
+parent_category: catering
+display_name: Small-format catering
+applicable_events: [baby_shower, birthday]
+guest_range: [10, 45]
+economics:
+  cost_structure: {food: 0.50, labor: 0.30, overhead: 0.20}
+  bottleneck: owner_time
+  capacity_perishable: false
+  min_order_exists: true
+  min_order_value: 600
+  decision_maker: owner
+  pricing_model: per_guest
+  margin_flexibility: medium
+levers:
+  - {key: daytime_slot, weight: 0.85}
+  - {key: weekday_slot, weight: 0.80}
+  - {key: relationship, weight: 0.70}
+  - {key: scope_reduction, weight: 0.60}
+  - {key: referral, weight: 0.50}
+levers_harmful:
+  - {key: volume, reason: "Small format: mentioning volume justifies raising the per-guest price"}
+  - {key: competing_bid, reason: "Owner reads price comparison as pressure"}
+resistance_profile:
+  opening_markup_expected: 0.12
+  typical_concession_ceiling: 0.15
+  hard_floor_signal: "food cost"
+  stonewall_probability: 0.10
+  upsell_probability: 0.25
+counterparty:
+  style: warm
+  hidden_fees: [{label: "Delivery + setup", amount: 90, unit: per_event}]
+benchmark_key: catering_small_format_{region_profile}

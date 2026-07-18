@@ -1,0 +1,30 @@
+key: decor__props_rental
+parent_category: decor
+display_name: Props rental
+applicable_events: [baby_shower, wedding, birthday]
+guest_range: [10, 300]
+economics:
+  cost_structure: {asset: 0.50, labor: 0.30, overhead: 0.20}
+  bottleneck: weekend_slot
+  capacity_perishable: true
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: manager
+  pricing_model: per_event
+  margin_flexibility: medium
+levers:
+  - {key: weekday_slot, weight: 0.80}
+  - {key: daytime_slot, weight: 0.60}
+  - {key: fee_challenge, weight: 0.65, note: "delivery and deposit"}
+levers_harmful:
+  - {key: volume, reason: "Priced per set; guest count does not apply"}
+resistance_profile:
+  opening_markup_expected: 0.20
+  typical_concession_ceiling: 0.20
+  hard_floor_signal: "rental rate"
+  stonewall_probability: 0.10
+  upsell_probability: 0.25
+counterparty:
+  style: warm
+  hidden_fees: [{label: "Delivery + deposit hold", amount: 140, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: decor_props_rental_{region_profile}

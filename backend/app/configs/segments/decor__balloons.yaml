@@ -1,0 +1,31 @@
+key: decor__balloons
+parent_category: decor
+display_name: Balloon decor
+applicable_events: [baby_shower, birthday]
+guest_range: [10, 100]
+economics:
+  cost_structure: {materials: 0.30, labor: 0.45, travel: 0.25}
+  bottleneck: labor_and_travel
+  capacity_perishable: false
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: high
+levers:
+  - {key: fee_challenge, weight: 0.80, note: "travel can be up to 40% of the quote"}
+  - {key: scope_reduction, weight: 0.70}
+  - {key: daytime_slot, weight: 0.55}
+  - {key: competing_bid, weight: 0.55}
+levers_harmful:
+  - {key: volume, reason: "Small order makes travel disproportionately expensive"}
+resistance_profile:
+  opening_markup_expected: 0.35
+  typical_concession_ceiling: 0.25
+  hard_floor_signal: "balloon cost"
+  stonewall_probability: 0.10
+  upsell_probability: 0.45
+counterparty:
+  style: upseller
+  hidden_fees: [{label: "Travel + setup + teardown", amount: 180, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: decor_balloons_{region_profile}

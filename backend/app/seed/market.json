@@ -1,0 +1,29 @@
+{
+  "note": "Seeded vendor market used when GOOGLE_PLACES_API_KEY is absent. places_type/price_level/review_count feed the Segment Classifier; true_segment drives the counterparty simulation. When they differ (e.g. a solo chef listed as a caterer), the in-call reclassification demo fires.",
+  "vendors": [
+    {"name": "Golden Fork Catering", "category": "catering", "true_segment": "catering__bespoke_chef", "places_type": "caterer", "price_level": 3, "review_count": 520, "rating": 4.7, "phone_e164": "+14155550111", "distance_km": 3.5},
+    {"name": "Bright Table Small Events", "category": "catering", "true_segment": "catering__small_format", "places_type": "caterer", "price_level": 2, "review_count": 74, "rating": 4.8, "phone_e164": "+14155550112", "distance_km": 3.1},
+    {"name": "QuickBite Delivery Co.", "category": "catering", "true_segment": "catering__delivery", "places_type": "meal_delivery", "price_level": 1, "review_count": 340, "rating": 4.1, "phone_e164": "+14155550113", "distance_km": 9.8},
+    {"name": "Rose & Crumb Bakery", "category": "catering", "true_segment": "catering__bakery_grazing", "places_type": "bakery", "price_level": 2, "review_count": 128, "rating": 4.7, "phone_e164": "+14155550114", "distance_km": 4.4},
+    {"name": "Chef Mateo Private Dining", "category": "catering", "true_segment": "catering__bespoke_chef", "places_type": "caterer", "price_level": 4, "review_count": 61, "rating": 4.9, "phone_e164": "+14155550115", "distance_km": 7.0},
+    {"name": "Harbor Room Events", "category": "catering", "true_segment": "catering__restaurant_offsite", "places_type": "restaurant", "price_level": 3, "review_count": 190, "rating": 4.5, "phone_e164": "+14155550116", "distance_km": 5.5},
+
+    {"name": "The Ivy Loft", "category": "venue", "true_segment": "venue__studio_space", "places_type": "event_venue", "price_level": 2, "review_count": 88, "rating": 4.6, "phone_e164": "+14155550121", "distance_km": 5.0},
+    {"name": "Corner Cafe Private Room", "category": "venue", "true_segment": "venue__cafe_private", "places_type": "cafe", "price_level": 2, "review_count": 156, "rating": 4.4, "phone_e164": "+14155550122", "distance_km": 2.6},
+    {"name": "Bella Vista Restaurant", "category": "venue", "true_segment": "venue__restaurant_deposit", "places_type": "restaurant", "price_level": 3, "review_count": 402, "rating": 4.2, "phone_e164": "+14155550123", "distance_km": 6.9},
+    {"name": "Grand Meridian Hotel", "category": "venue", "true_segment": "venue__hotel_banquet", "places_type": "banquet_hall", "price_level": 4, "review_count": 512, "rating": 4.3, "phone_e164": "+14155550124", "distance_km": 8.1},
+    {"name": "The Barn at Willow Creek", "category": "venue", "true_segment": "venue__dedicated", "places_type": "event_venue", "price_level": 3, "review_count": 233, "rating": 4.7, "phone_e164": "+14155550125", "distance_km": 14.2},
+
+    {"name": "Pop & Twist Balloons", "category": "decor", "true_segment": "decor__balloons", "places_type": "party_store", "price_level": 2, "review_count": 96, "rating": 4.5, "phone_e164": "+14155550131", "distance_km": 4.0},
+    {"name": "Petal & Prop Studio", "category": "decor", "true_segment": "decor__themed_set", "places_type": "florist", "price_level": 3, "review_count": 141, "rating": 4.6, "phone_e164": "+14155550132", "distance_km": 5.3},
+    {"name": "Vintage Rentals West", "category": "decor", "true_segment": "decor__props_rental", "places_type": "store", "price_level": 2, "review_count": 77, "rating": 4.4, "phone_e164": "+14155550133", "distance_km": 7.8},
+
+    {"name": "Amber Lane Photography", "category": "photo", "true_segment": "photo__hourly", "places_type": "photographer", "price_level": 2, "review_count": 118, "rating": 4.8, "phone_e164": "+14155550141", "distance_km": 3.9},
+    {"name": "Sofia Reyes Lifestyle", "category": "photo", "true_segment": "photo__lifestyle", "places_type": "photographer", "price_level": 3, "review_count": 34, "rating": 4.9, "phone_e164": "+14155550142", "distance_km": 6.1},
+    {"name": "Frame & Field Studio", "category": "photo", "true_segment": "photo__studio_team", "places_type": "photography_studio", "price_level": 3, "review_count": 205, "rating": 4.5, "phone_e164": "+14155550143", "distance_km": 5.0},
+
+    {"name": "DJ Marcus Sound", "category": "music", "true_segment": "music__dj", "places_type": "dj", "price_level": 2, "review_count": 149, "rating": 4.7, "phone_e164": "+14155550151", "distance_km": 4.5},
+    {"name": "The Blue Notes Band", "category": "music", "true_segment": "music__live_band", "places_type": "band", "price_level": 3, "review_count": 92, "rating": 4.6, "phone_e164": "+14155550152", "distance_km": 8.0},
+    {"name": "Encore Entertainment Agency", "category": "music", "true_segment": "music__agency", "places_type": "entertainment_agency", "price_level": 3, "review_count": 260, "rating": 4.2, "phone_e164": "+14155550153", "distance_km": 9.2}
+  ]
+}

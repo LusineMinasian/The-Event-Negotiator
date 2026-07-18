@@ -1,0 +1,35 @@
+key: catering__full_service
+parent_category: catering
+display_name: Full-service catering
+applicable_events: [wedding, baby_shower]
+guest_range: [40, 400]
+economics:
+  cost_structure: {food: 0.45, labor: 0.35, overhead: 0.20}
+  bottleneck: staff_scheduling
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 2000
+  decision_maker: manager
+  pricing_model: per_guest_tiered
+  margin_flexibility: medium
+levers:
+  - {key: weekday_slot, weight: 0.90}
+  - {key: bundle, weight: 0.80}
+  - {key: competing_bid, weight: 0.70}
+  - {key: scope_reduction, weight: 0.60, note: "drop staff or dessert"}
+  - {key: tier_downgrade, weight: 0.50}
+  - {key: payment_terms, weight: 0.35}
+levers_harmful:
+  - {key: volume, reason: "Already above threshold; mentioning volume gives no leverage"}
+  - {key: urgency, reason: "Short notice raises the staffing rate"}
+resistance_profile:
+  opening_markup_expected: 0.15
+  typical_concession_ceiling: 0.12
+  hard_floor_signal: "food cost"
+  stonewall_probability: 0.25
+  upsell_probability: 0.45
+counterparty:
+  style: hard
+  hidden_fees: [{label: "Service charge 10%", amount_pct: 0.10, unit: percent_of_subtotal, disclosed_voluntarily: false}]
+expected_line_items_override: [food, staff, delivery, equipment_rental, service_charge, corkage]
+benchmark_key: catering_full_service_{region_profile}

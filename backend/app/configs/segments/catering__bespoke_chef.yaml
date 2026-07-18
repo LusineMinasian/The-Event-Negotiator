@@ -1,0 +1,35 @@
+key: catering__bespoke_chef
+parent_category: catering
+display_name: Bespoke private chef
+applicable_events: [wedding, baby_shower, birthday]
+guest_range: [8, 60]
+economics:
+  cost_structure: {food: 0.40, labor: 0.45, overhead: 0.15}
+  bottleneck: chef_calendar
+  capacity_perishable: true
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: owner
+  pricing_model: bespoke
+  margin_flexibility: high
+levers:
+  - {key: relationship, weight: 0.85}
+  - {key: off_season, weight: 0.60}
+  - {key: payment_terms, weight: 0.55}
+  - {key: referral, weight: 0.50}
+levers_harmful:
+  - {key: competing_bid, reason: "A solo operator reads price comparison as devaluing their craft"}
+  - {key: tier_downgrade, reason: "No packages to downgrade"}
+resistance_profile:
+  opening_markup_expected: 0.10
+  typical_concession_ceiling: 0.28
+  hard_floor_signal: "my time"
+  stonewall_probability: 0.10
+  upsell_probability: 0.20
+counterparty:
+  style: flexible
+  # Pre-classified as full_service by Places signals, reveals solo operator mid-call:
+  reveal_signal: "I work solo, there is no team"
+  reclassify_from: catering__full_service
+  hidden_fees: []
+benchmark_key: catering_bespoke_chef_{region_profile}

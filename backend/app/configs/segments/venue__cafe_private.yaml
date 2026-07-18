@@ -1,0 +1,32 @@
+key: venue__cafe_private
+parent_category: venue
+display_name: Cafe with private area
+applicable_events: [baby_shower, birthday]
+guest_range: [10, 40]
+economics:
+  cost_structure: {fnb: 0.70, staff: 0.20, overhead: 0.10}
+  bottleneck: minimum_spend
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 500
+  decision_maker: owner
+  pricing_model: per_guest
+  margin_flexibility: medium
+levers:
+  - {key: daytime_slot, weight: 0.85}
+  - {key: weekday_slot, weight: 0.80}
+  - {key: scope_reduction, weight: 0.55}
+  - {key: relationship, weight: 0.55}
+levers_harmful:
+  - {key: volume, reason: "Small format sits below the minimum spend"}
+  - {key: bundle, reason: "Minimum spend is hidden"}
+resistance_profile:
+  opening_markup_expected: 0.10
+  typical_concession_ceiling: 0.15
+  hard_floor_signal: "minimum spend"
+  stonewall_probability: 0.15
+  upsell_probability: 0.30
+counterparty:
+  style: warm
+  hidden_fees: [{label: "Room hire (waived above minimum)", amount: 150, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: venue_cafe_private_{region_profile}

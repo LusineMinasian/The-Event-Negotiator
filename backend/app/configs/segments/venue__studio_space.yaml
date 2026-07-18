@@ -1,0 +1,31 @@
+key: venue__studio_space
+parent_category: venue
+display_name: Studio space
+applicable_events: [baby_shower, birthday]
+guest_range: [8, 35]
+economics:
+  cost_structure: {rental: 0.80, overhead: 0.20}
+  bottleneck: hourly_slot
+  capacity_perishable: true
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: owner
+  pricing_model: per_hour
+  margin_flexibility: high
+levers:
+  - {key: daytime_slot, weight: 0.90}
+  - {key: weekday_slot, weight: 0.80}
+  - {key: urgency, weight: 0.65}
+  - {key: scope_reduction, weight: 0.55, note: "fewer hours"}
+levers_harmful:
+  - {key: volume, reason: "Hourly rate; guest count does not apply"}
+resistance_profile:
+  opening_markup_expected: 0.15
+  typical_concession_ceiling: 0.25
+  hard_floor_signal: "hourly rate"
+  stonewall_probability: 0.10
+  upsell_probability: 0.20
+counterparty:
+  style: flexible
+  hidden_fees: [{label: "Cleaning + overtime buffer", amount: 80, unit: per_event}]
+benchmark_key: venue_studio_space_{region_profile}

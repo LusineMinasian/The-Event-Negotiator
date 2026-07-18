@@ -1,0 +1,17 @@
+key: us_ca
+countries: [US, CA]
+currency: USD
+currency_symbol: "$"
+locale_primary: en-US
+locale_fallbacks: [en-GB]
+phone_format: E.164
+business_hours: {mon_fri: "09:00-18:00", sat: "10:00-15:00", sun: closed}
+recording_consent: mixed_notify_always
+consent_script_key: consent_us
+ai_disclosure: mandatory_upfront
+discovery_sources: [google_places, yelp, osm]
+benchmark_sources: [regional_price_index, vendor_published_rates]
+off_season_months: [1, 2, 11]
+tax_handling: prices_exclude_tax
+free_delivery_threshold: 800
+segment_availability_overrides: {}

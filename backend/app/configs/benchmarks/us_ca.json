@@ -1,0 +1,26 @@
+{
+  "note": "External fallback benchmarks (median per normalization unit). Used only when in-campaign data is thin. Source: published rate cards / regional price index (illustrative).",
+  "currency": "USD",
+  "segments": {
+    "catering_full_service_us_ca": {"per_guest": 95},
+    "catering_restaurant_offsite_us_ca": {"per_guest": 78},
+    "catering_bespoke_chef_us_ca": {"per_guest": 130},
+    "catering_delivery_us_ca": {"per_guest": 42},
+    "catering_small_format_us_ca": {"per_guest": 58},
+    "catering_bakery_grazing_us_ca": {"per_guest": 46},
+    "venue_hotel_banquet_us_ca": {"per_event": 8500},
+    "venue_dedicated_us_ca": {"per_event": 6000},
+    "venue_restaurant_deposit_us_ca": {"per_event": 1400},
+    "venue_cafe_private_us_ca": {"per_event": 900},
+    "venue_studio_space_us_ca": {"per_event": 650},
+    "decor_balloons_us_ca": {"per_event": 700},
+    "decor_themed_set_us_ca": {"per_event": 1200},
+    "decor_props_rental_us_ca": {"per_event": 800},
+    "photo_hourly_us_ca": {"per_hour": 250},
+    "photo_lifestyle_us_ca": {"per_hour": 320},
+    "photo_studio_team_us_ca": {"per_hour": 450},
+    "music_dj_us_ca": {"per_event": 1200},
+    "music_live_band_us_ca": {"per_event": 3500},
+    "music_agency_us_ca": {"per_event": 2800}
+  }
+}

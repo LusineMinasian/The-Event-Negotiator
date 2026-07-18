@@ -1,0 +1,70 @@
+# Lever catalog. Phrases are templates; {amount}, {benchmark}, {day}, {unit} are
+# filled by the Leverage Engine from VERIFIED data only. `unlock` is the fraction
+# of the segment concession ceiling this lever can unlock when it lands.
+competing_bid:
+  display: Competing bid
+  phrase: "I've got a firm quote at {amount} with delivery included for the same job. Can you do better?"
+  applicable_if: has_verified_competitor
+  unlock: 0.55
+bundle:
+  display: Bundle
+  phrase: "We're looking at you for more than one part of this event. What's the discount for booking it together?"
+  unlock: 0.45
+weekday_slot:
+  display: Weekday slot
+  phrase: "If we move it to a {day} instead, how does the price change?"
+  applicable_if: date_flexible
+  unlock: 0.40
+daytime_slot:
+  display: Daytime slot
+  phrase: "It's a daytime event, the space is free again by six. Does that change the rate?"
+  unlock: 0.40
+off_season:
+  display: Off-season
+  phrase: "This is your low season. Do you have an off-season rate?"
+  applicable_if: off_season
+  unlock: 0.35
+volume:
+  display: Volume
+  phrase: "This isn't your smallest order. Is there a volume threshold?"
+  applicable_if: order_above_min
+  unlock: 0.30
+urgency:
+  display: Urgency
+  phrase: "The date's only a few weeks out and your slot is open. What price closes it today?"
+  applicable_if: short_horizon
+  unlock: 0.45
+fee_challenge:
+  display: Fee challenge
+  phrase: "Is that setup fee always mandatory, or is it included with the full package?"
+  unlock: 0.35
+price_match:
+  display: Price match
+  phrase: "Honestly I like you better on reviews. Match that number and we're done."
+  applicable_if: has_verified_competitor
+  unlock: 0.40
+relationship:
+  display: Relationship
+  phrase: "We've got another event coming up in the spring. Worth starting a relationship?"
+  unlock: 0.35
+scope_reduction:
+  display: Scope reduction
+  phrase: "If we drop the dessert table, what does that bring it to?"
+  unlock: 0.40
+tier_downgrade:
+  display: Tier downgrade
+  phrase: "What exactly separates the mid package from the top one? Is the difference worth it?"
+  unlock: 0.40
+manager_escalation:
+  display: Manager escalation
+  phrase: "I understand it's not your call. Who can I talk to about the price?"
+  applicable_if: decision_maker_employee
+  unlock: 0.30
+referral:
+  display: Referral
+  phrase: "You came recommended to me. Do you have terms for referrals?"
+  unlock: 0.30
+payment_terms:
+  display: Payment terms
+  phrase: "If we pay in full upfront, is there a discount?"
+  unlock: 0.30

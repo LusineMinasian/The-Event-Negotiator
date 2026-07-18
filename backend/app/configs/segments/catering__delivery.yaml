@@ -1,0 +1,34 @@
+key: catering__delivery
+parent_category: catering
+display_name: Food delivery
+applicable_events: [baby_shower, birthday]
+guest_range: [10, 200]
+economics:
+  cost_structure: {food: 0.65, labor: 0.10, overhead: 0.25}
+  bottleneck: none
+  capacity_perishable: false
+  min_order_exists: true
+  min_order_value: 400
+  decision_maker: employee
+  pricing_model: fixed_grid
+  margin_flexibility: low
+levers:
+  - {key: fee_challenge, weight: 0.70}
+  - {key: competing_bid, weight: 0.55}
+  - {key: volume, weight: 0.40, applicable_if: "order_total > free_delivery_threshold"}
+levers_harmful:
+  - {key: relationship, reason: "Fixed grid: relationships do not move the price"}
+  - {key: urgency, reason: "No revenue lost from an unfilled slot"}
+resistance_profile:
+  opening_markup_expected: 0.06
+  typical_concession_ceiling: 0.10
+  hard_floor_signal: "fixed price list"
+  stonewall_probability: 0.05
+  upsell_probability: 0.15
+counterparty:
+  style: lowballer
+  hidden_fees:
+    - {label: "Service charge 12%", amount_pct: 0.12, unit: percent_of_subtotal, disclosed_voluntarily: false}
+    - {label: "Staff, 2 x 4h", amount: 280, unit: per_event, disclosed_voluntarily: false}
+    - {label: "Tableware rental", amount: 120, unit: per_event, disclosed_voluntarily: false}
+benchmark_key: catering_delivery_{region_profile}

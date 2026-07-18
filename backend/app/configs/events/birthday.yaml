@@ -1,0 +1,21 @@
+key: birthday
+display_name: Birthday
+planning_horizon_days: [14, 28]
+typical_guest_range: [10, 60]
+required_categories: [venue, catering, decor]
+optional_categories: [photo]
+style_taxonomy: [palette, density, theme, table_setting]
+palette_extraction: enabled
+interview_tone: casual_fast
+default_ranking_weights:
+  price: 0.55
+  completeness: 0.20
+  risk: 0.15
+  reputation: 0.10
+base_levers:
+  - urgency
+  - weekday_slot
+  - daytime_slot
+  - competing_bid
+  - scope_reduction
+base_levers_harmful: []

@@ -1,0 +1,30 @@
+key: venue
+display_name: Venue
+places_types: [event_venue, banquet_hall, restaurant, cafe]
+places_keywords: {en: "event venue"}
+normalization_unit: per_event
+job_spec_taxonomy: [capacity, layout, catering_policy, step_free_access, hours]
+expected_line_items: [rental, cleaning, staff, corkage, security, overtime]
+challengeable_fees: [cleaning, corkage, security, overtime]
+segments:
+  - venue__cafe_private
+  - venue__studio_space
+  - venue__restaurant_deposit
+  - venue__hotel_banquet
+  - venue__dedicated
+segment_classifier_signals:
+  - {signal: places_type, maps: {cafe: venue__cafe_private, banquet_hall: venue__hotel_banquet, event_venue: venue__dedicated, restaurant: venue__restaurant_deposit}}
+  - {signal: price_level, thresholds: {"4": venue__hotel_banquet, "1": venue__cafe_private}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: deposit_over_50pct, severity: high}
+  - {rule: non_refundable_deposit, severity: high}
+  - {rule: service_charge_undisclosed, severity: medium}
+call_objectives:
+  - "Get the rental price for the date and time slot"
+  - "Find the minimum spend and the catering policy"
+  - "Surface hidden fees: cleaning, security, overtime, corkage"
+  - "Clarify deposit terms and refundability"
+diagnostic_questions:
+  - {q: "Is that date still open on your calendar?", determines: capacity_perishable}
+  - {q: "Do you decide on price, or does it need approval?", determines: decision_maker}

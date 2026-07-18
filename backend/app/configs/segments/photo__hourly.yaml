@@ -1,0 +1,31 @@
+key: photo__hourly
+parent_category: photo
+display_name: Hourly photographer
+applicable_events: [baby_shower, birthday, wedding]
+guest_range: [5, 200]
+economics:
+  cost_structure: {labor: 0.60, editing: 0.30, overhead: 0.10}
+  bottleneck: date_slot
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 250
+  decision_maker: owner
+  pricing_model: per_hour
+  margin_flexibility: high
+levers:
+  - {key: scope_reduction, weight: 0.80, note: "fewer hours"}
+  - {key: urgency, weight: 0.60}
+  - {key: daytime_slot, weight: 0.55}
+  - {key: competing_bid, weight: 0.55}
+levers_harmful:
+  - {key: tier_downgrade, reason: "No fixed tiers; priced by the hour"}
+resistance_profile:
+  opening_markup_expected: 0.15
+  typical_concession_ceiling: 0.25
+  hard_floor_signal: "editing time"
+  stonewall_probability: 0.10
+  upsell_probability: 0.25
+counterparty:
+  style: warm
+  hidden_fees: [{label: "Travel fee", amount: 60, unit: per_event}]
+benchmark_key: photo_hourly_{region_profile}

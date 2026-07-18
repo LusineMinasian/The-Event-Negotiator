@@ -1,0 +1,31 @@
+key: music__live_band
+parent_category: music
+display_name: Live band
+applicable_events: [wedding]
+guest_range: [40, 300]
+economics:
+  cost_structure: {labor: 0.75, equipment: 0.15, overhead: 0.10}
+  bottleneck: lineup_and_date
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 2000
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: medium
+levers:
+  - {key: scope_reduction, weight: 0.75, note: "lineup, hours"}
+  - {key: weekday_slot, weight: 0.60}
+  - {key: off_season, weight: 0.55}
+  - {key: relationship, weight: 0.55}
+levers_harmful:
+  - {key: tier_downgrade, reason: "Fixed lineup; no tier structure"}
+resistance_profile:
+  opening_markup_expected: 0.15
+  typical_concession_ceiling: 0.18
+  hard_floor_signal: "musician pay"
+  stonewall_probability: 0.15
+  upsell_probability: 0.30
+counterparty:
+  style: hard
+  hidden_fees: [{label: "PA system + sound engineer", amount: 500, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: music_live_band_{region_profile}

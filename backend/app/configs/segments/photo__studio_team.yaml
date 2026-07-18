@@ -1,0 +1,31 @@
+key: photo__studio_team
+parent_category: photo
+display_name: Studio with team
+applicable_events: [wedding]
+guest_range: [40, 300]
+economics:
+  cost_structure: {labor: 0.40, editing: 0.40, overhead: 0.20}
+  bottleneck: editing_pipeline
+  capacity_perishable: false
+  min_order_exists: true
+  min_order_value: 1500
+  decision_maker: manager
+  pricing_model: package_tiers
+  margin_flexibility: medium
+levers:
+  - {key: tier_downgrade, weight: 0.75}
+  - {key: scope_reduction, weight: 0.65, note: "shooting hours"}
+  - {key: competing_bid, weight: 0.55}
+  - {key: bundle, weight: 0.50, note: "photo + video"}
+levers_harmful:
+  - {key: urgency, reason: "Editing pipeline sets throughput; urgency raises rush fees"}
+resistance_profile:
+  opening_markup_expected: 0.22
+  typical_concession_ceiling: 0.15
+  hard_floor_signal: "package price"
+  stonewall_probability: 0.15
+  upsell_probability: 0.45
+counterparty:
+  style: upseller
+  hidden_fees: [{label: "Album + rush editing", amount: 400, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: photo_studio_team_{region_profile}

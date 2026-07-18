@@ -1,0 +1,22 @@
+key: music
+display_name: Music
+places_types: [dj, band, entertainment_agency]
+places_keywords: {en: "wedding dj band"}
+normalization_unit: per_event
+job_spec_taxonomy: [format, hours, equipment, genre]
+expected_line_items: [performance, equipment, travel, overtime, agency_fee]
+challengeable_fees: [equipment, travel, overtime, agency_fee]
+segments:
+  - music__dj
+  - music__live_band
+  - music__agency
+segment_classifier_signals:
+  - {signal: places_type, maps: {dj: music__dj, band: music__live_band, entertainment_agency: music__agency}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: service_charge_undisclosed, severity: medium}
+call_objectives:
+  - "Get the fee for the requested format and number of hours"
+  - "Surface the agency commission and equipment/travel add-ons"
+diagnostic_questions:
+  - {q: "Are you the performer, or an agency?", determines: decision_maker}

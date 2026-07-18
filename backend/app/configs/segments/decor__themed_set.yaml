@@ -1,0 +1,31 @@
+key: decor__themed_set
+parent_category: decor
+display_name: Themed set
+applicable_events: [baby_shower, wedding, birthday]
+guest_range: [10, 200]
+economics:
+  cost_structure: {materials: 0.45, labor: 0.35, overhead: 0.20}
+  bottleneck: prop_inventory
+  capacity_perishable: false
+  min_order_exists: false
+  min_order_value: 0
+  decision_maker: owner
+  pricing_model: package_tiers
+  margin_flexibility: medium
+levers:
+  - {key: tier_downgrade, weight: 0.75}
+  - {key: scope_reduction, weight: 0.65}
+  - {key: competing_bid, weight: 0.55}
+levers_harmful:
+  - {key: urgency, reason: "Inventory sits in storage; urgency does not apply"}
+  - {key: relationship, reason: "Package model; the price list decides"}
+resistance_profile:
+  opening_markup_expected: 0.25
+  typical_concession_ceiling: 0.18
+  hard_floor_signal: "package price"
+  stonewall_probability: 0.10
+  upsell_probability: 0.40
+counterparty:
+  style: warm
+  hidden_fees: [{label: "Delivery", amount: 90, unit: per_event}]
+benchmark_key: decor_themed_set_{region_profile}
