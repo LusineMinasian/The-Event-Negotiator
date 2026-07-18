@@ -1,43 +1,66 @@
 ================================================================================
- TOOL — request_human   ("Pull Me In")   (webhook, WRITE + WAIT)
+ TOOL — request_human   ("Pull Me In")   (webhook, POST, WRITE + long-poll WAIT)
  Human-in-the-loop handoff when the deal crosses the client's budget.
 ================================================================================
 Publishes bus event  handoff.requested  and waits for  handoff.resolved
 (see caller.py :: _maybe_handoff + the handoff_events registry).
+Read tools/00_tool_config_reference.txt first.
 
 WHY IT EXISTS
 -------------
 The agent negotiates but does not decide. When a price breaches the client's category
-budget, the honest move is to bring a human in, not to walk away or overcommit. In the
-UI this lights up "Pull Me In"; the client approves a higher ceiling or holds firm.
+budget, the honest move is to bring a human in — not to walk away or overcommit. In
+the UI this lights up "Pull Me In"; the client approves a higher ceiling or holds firm.
 
-ELEVENLABS WEBHOOK TOOL CONFIG
-------------------------------
-name:        request_human
-description: Ask the client to make a decision because the price crossed their budget
-             for this category. Use when you cannot proceed without a human's call.
-             After calling, tell the vendor "one moment, let me bring my client in,"
-             and wait for the decision before continuing.
-method:      POST
-url:         {{server_base_url}}/api/agent-tools/handoff
-headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
-             Content-Type: application/json
-body params:
-  campaign_id   string  required = {{campaign_id}}
-  call_id       string  required = {{call_id}}
-  vendor_name   string  required = {{vendor_name}}
-  reason        string  required  e.g. "budget_exceeded"
-  detail        string  required  e.g. "$9,600 is over the catering budget of $8,000"
-  current_total number  required
-response_timeout: 30s   (long poll — the server holds the response until the client
-                         decides or a timeout fires)
+WHEN TO CALL
+------------
+When the current total crosses the client's budget for this category and the agent
+cannot proceed without a human decision. After calling, the agent tells the vendor
+"one moment, let me bring my client in" and waits for the response.
+
+PASTE-READY tool_config
+-----------------------
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "request_human",
+    "description": "Ask the client to decide because the price crossed their budget for this category. Use only when I cannot proceed without a human's call. After calling, say 'one moment, let me bring my client in' and wait for the decision before continuing. Do not exceed the budget without approval.",
+    "response_timeout_secs": 30,
+    "api_schema": {
+      "url": "{{server_base_url}}/api/agent-tools/handoff",
+      "method": "POST",
+      "content_type": "application/json",
+      "request_headers": {
+        "Authorization": { "secret_id": "agent_tools_secret" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "campaign_id":   { "type": "string", "dynamic_variable": "campaign_id" },
+          "call_id":       { "type": "string", "dynamic_variable": "call_id" },
+          "vendor_name":   { "type": "string", "dynamic_variable": "vendor_name" },
+          "reason":        { "type": "string", "description": "short reason code, e.g. 'budget_exceeded'" },
+          "detail":        { "type": "string", "description": "human-readable, e.g. '$9,600 is over the catering budget of $8,000'" },
+          "current_total": { "type": "number", "description": "the vendor's current total" }
+        },
+        "required": ["campaign_id", "call_id", "reason", "detail", "current_total"]
+      }
+    },
+    "assignments": [
+      { "source": "response", "dynamic_variable": "handoff_decision",   "value_path": "decision" },
+      { "source": "response", "dynamic_variable": "approved_ceiling",   "value_path": "new_ceiling", "preserve_native_type": true }
+    ]
+  }
+}
 
 SERVER CONTRACT
 ---------------
 - Insert a Handoff row (reason, urgency, context).
 - bus.publish(campaign_id, "handoff.requested", { call_id, vendor_name, reason, detail }).
 - Block on an asyncio.Event (registry keyed by call_id) until the client acts in the
-  UI or a timeout hits, then bus.publish "handoff.resolved".
+  UI or a timeout fires, then bus.publish "handoff.resolved". NOTE: keep the poll
+  within response_timeout_secs (30); if the client is slower, return resolved_by
+  "timeout" and let the agent re-ask or close.
 Return (when resolved):
   { "ok": true, "resolved_by": "user" | "timeout",
     "decision": "approve_higher_ceiling" | "hold_at_budget",
@@ -48,4 +71,6 @@ AGENT BEHAVIOR ON THE RESULT
 - approve_higher_ceiling -> "Thanks for holding — that works, let's proceed at ..."
 - hold_at_budget / timeout -> "I'll need to keep it at <budget>. Can you meet that?"
   If they can't, close as a callback or declined — never bust the budget silently.
-- Only ONE handoff per campaign by default; keep it for the moment that matters.
+- Only ONE handoff per campaign by default; save it for the moment that matters.
+- If the client wants to SPEAK to the vendor (not just decide), use the
+  transfer_to_number system tool instead (see system_tools.txt).

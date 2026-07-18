@@ -1,43 +1,64 @@
 ================================================================================
- TOOL — get_verified_leverage   (webhook, READ-ONLY)
+ TOOL — get_verified_leverage   (webhook, GET, READ-ONLY)
  The single source of truth for what the Caller is ALLOWED to say.
  Backs the honesty guarantee: the agent may only cite numbers this returns.
 ================================================================================
 Mirrors backend/app/engines/leverage.py :: get_verified_leverage.
+Read tools/00_tool_config_reference.txt first (pinning + secret rules).
 
 WHY IT EXISTS
 -------------
-Left to itself, an LLM will happily invent a competitor's price to win. This tool
-removes that temptation: the agent asks the server "what leverage do I actually
-have here?" and gets back (a) verified competing quotes it may quote out loud and
-(b) the ranked, pre-phrased levers that work on THIS vendor's segment — with the
-back-firing ones already stripped out.
+Left alone, an LLM will invent a competitor's price to win. This tool removes the
+temptation: the agent asks the server "what leverage do I actually hold here?" and
+gets back (a) verified competing quotes it may quote out loud and (b) the ranked,
+pre-phrased levers that work on THIS vendor's segment — with the back-firing ones
+already stripped. If there are no verified competitors yet, the server omits
+competing_bid / price_match so the agent literally cannot bluff.
 
-ELEVENLABS WEBHOOK TOOL CONFIG
-------------------------------
-name:        get_verified_leverage
-description: Fetch the verified competing quotes I am allowed to cite and the ranked
-             negotiation levers for this vendor. Call this BEFORE negotiating, and
-             again after any reclassify_segment. Never cite a number this did not
-             return.
-method:      GET
-url:         {{server_base_url}}/api/agent-tools/leverage
-headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
-query params (LLM fills from conversation / dynamic vars):
-  campaign_id     string  required  = {{campaign_id}}
-  call_id         string  required  = {{call_id}}
-  category        string  required  vendor category (catering|venue|decor|photo|music)
-  segment_key     string  required  current segment (starts = classified, updates on reclassify)
-  current_total   number  optional  the vendor's latest number, so ranking can adapt
-response_timeout: 8s
+WHEN TO CALL
+------------
+Before the first negotiation lever, and AGAIN after any reclassify_segment (the
+winning levers change with the segment). Cheap; safe to call repeatedly.
+
+PASTE-READY tool_config
+-----------------------
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "get_verified_leverage",
+    "description": "Fetch the verified competing quotes I am allowed to cite out loud, plus the ranked negotiation levers for this vendor's segment. ALWAYS call before negotiating and again after reclassify_segment. Never state a competitor number this did not return; if 'competitors' is empty I have no competing bid and must not claim one.",
+    "response_timeout_secs": 8,
+    "api_schema": {
+      "url": "{{server_base_url}}/api/agent-tools/leverage",
+      "method": "GET",
+      "content_type": "application/json",
+      "request_headers": {
+        "Authorization": { "secret_id": "agent_tools_secret" }
+      },
+      "query_params_schema": {
+        "properties": {
+          "campaign_id":   { "type": "string", "dynamic_variable": "campaign_id" },
+          "call_id":       { "type": "string", "dynamic_variable": "call_id" },
+          "category":      { "type": "string", "dynamic_variable": "category" },
+          "segment_key":   { "type": "string", "description": "current segment key for this vendor; starts as the classified segment, changes after reclassify_segment" },
+          "current_total": { "type": "number", "description": "the vendor's latest quoted total so far, so ranking can adapt" }
+        },
+        "required": ["campaign_id", "call_id", "category", "segment_key"]
+      }
+    },
+    "assignments": [
+      { "source": "response", "dynamic_variable": "verified_competitors", "value_path": "competitors", "preserve_native_type": true },
+      { "source": "response", "dynamic_variable": "forbidden_levers",      "value_path": "forbidden_levers", "preserve_native_type": true }
+    ]
+  }
+}
 
 SERVER RESPONSE (what the agent receives)
 -----------------------------------------
 {
   "competitors": [
      { "amount": 8400, "includes": "delivery", "category": "catering" }
-     // ONLY verified, user-approved quotes already gathered this campaign.
-     // Empty array if none yet -> agent must NOT claim to have a competing bid.
+     // ONLY verified, user-approved quotes gathered this campaign. Empty => no bid.
   ],
   "levers": [
      { "key": "weekday_slot",  "display": "Weekday slot",
@@ -46,14 +67,20 @@ SERVER RESPONSE (what the agent receives)
        "phrase": "I've got a firm quote at 8400 with delivery included. Can you beat it?" }
      // ranked strongest-first for this segment; harmful levers already removed
   ],
-  "forbidden_levers": ["volume", "urgency"]   // context for the agent; do not use
+  "forbidden_levers": ["volume", "urgency"]   // for the agent's awareness; never use
 }
 
-BEHAVIOR NOTES
---------------
+SERVER CONTRACT
+---------------
 - Read-only: publishes NOTHING to the bus (it doesn't change the deal).
-- The {amount} in competing_bid phrasing is filled by the SERVER from a real quote,
-  never by the model. If competitors is empty, the server must omit competing_bid /
-  price_match from levers so the agent literally cannot bluff.
-- Safe to call multiple times; cheap. Always call it after reclassify_segment because
-  the winning levers change with the segment.
+- The {amount} inside competing_bid phrasing is filled by the SERVER from a real
+  Quote row, never by the model. If competitors is empty, DROP competing_bid and
+  price_match from levers so the agent has nothing to bluff with.
+- Rank levers by the segment's lever weights (segments/*.yaml) x learned effectiveness
+  (SegmentObservation), and subtract levers_harmful.
+
+HONESTY NOTE
+------------
+This is the tool that makes "the price moved because of leverage the agent gathered"
+literally true: the only competing numbers in the agent's mouth are the ones the
+server verified and returned here.

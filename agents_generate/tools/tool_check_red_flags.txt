@@ -1,35 +1,63 @@
 ================================================================================
- TOOL — check_red_flags   (webhook, READ)
+ TOOL — check_red_flags   (webhook, POST, READ-mostly)
  Tests a quote against the vertical's red-flag rules so the agent can push back.
 ================================================================================
 Mirrors backend/app/engines/red_flag.py and the per-category red_flags config
-(e.g. below_market_30 @ 0.70, service_charge_undisclosed, deposit_over_50pct,
-incomplete_itemization).
+(below_market_30 @ 0.70, service_charge_undisclosed, deposit_over_50pct,
+incomplete_itemization). Read tools/00_tool_config_reference.txt first.
 
 WHY IT EXISTS
 -------------
-The brief is explicit: a quote 30%+ below market is a WARNING, not a win. This tool
-lets the agent sanity-check a number mid-call and, if it's suspiciously low or
-under-itemized, probe instead of celebrating.
+The brief is explicit: a quote 30%+ below market is a WARNING, not a win. This lets
+the agent sanity-check a number mid-call and, if it's suspiciously low or
+under-itemized, PROBE instead of celebrating.
 
-ELEVENLABS WEBHOOK TOOL CONFIG
-------------------------------
-name:        check_red_flags
-description: Check the current quote against market red-flag rules (e.g. 30%+ below
-             market, undisclosed service charge, oversized deposit, incomplete
-             itemization). Call once you have a total. If it flags below-market, do
-             NOT celebrate — probe what's missing.
-method:      POST
-url:         {{server_base_url}}/api/agent-tools/red-flags
-headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
-             Content-Type: application/json
-body params:
-  campaign_id   string  required = {{campaign_id}}
-  call_id       string  required = {{call_id}}
-  category      string  required
-  segment_key   string  required
-  quote         object  required  { line_items[], terms{}, normalized_per_unit }
-response_timeout: 8s
+WHEN TO CALL
+------------
+Once it has a total (after the opening price, and again after fees are revealed).
+
+PASTE-READY tool_config
+-----------------------
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "check_red_flags",
+    "description": "Check the current quote against market red-flag rules: 30%+ below market, undisclosed service charge, oversized deposit, incomplete itemization. Call once I have a total. If it flags below-market, do NOT celebrate; probe what is missing.",
+    "response_timeout_secs": 8,
+    "api_schema": {
+      "url": "{{server_base_url}}/api/agent-tools/red-flags",
+      "method": "POST",
+      "content_type": "application/json",
+      "request_headers": {
+        "Authorization": { "secret_id": "agent_tools_secret" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "campaign_id": { "type": "string", "dynamic_variable": "campaign_id" },
+          "call_id":     { "type": "string", "dynamic_variable": "call_id" },
+          "category":    { "type": "string", "dynamic_variable": "category" },
+          "segment_key": { "type": "string", "description": "current segment key for this vendor" },
+          "quote": {
+            "type": "object",
+            "description": "the current quote to evaluate",
+            "properties": {
+              "line_items":          { "type": "array", "items": { "type": "object" }, "description": "same line_items sent to log_quote" },
+              "total":               { "type": "number" },
+              "normalized_per_unit": { "type": "number", "description": "per guest / per hour / per event" },
+              "terms":               { "type": "object", "description": "deposit_pct etc." }
+            },
+            "required": ["line_items", "total"]
+          }
+        },
+        "required": ["campaign_id", "call_id", "category", "segment_key", "quote"]
+      }
+    },
+    "assignments": [
+      { "source": "response", "dynamic_variable": "market_median_per_unit", "value_path": "market_median_per_unit" }
+    ]
+  }
+}
 
 SERVER RESPONSE
 ---------------
@@ -40,15 +68,15 @@ SERVER RESPONSE
     { "rule_key": "incomplete_itemization", "severity": "medium",
       "detail": "No delivery or setup line item present." }
   ],
-  "market_median_per_unit": 95.0    // for the agent's framing, e.g. "I'm hearing ~$95/guest"
+  "market_median_per_unit": 95.0    // for framing, e.g. "I'm hearing ~$95/guest elsewhere"
 }
 Empty flags array = quote looks clean.
 
 SERVER CONTRACT
 ---------------
-- Look up the segment benchmark median, run red_flag.evaluate, persist RedFlag rows
-  for the quote, and optionally bus.publish(campaign_id, "redflag", {...}) so the War
-  Room can badge the vendor live.
+- Look up the segment benchmark median, run red_flag.evaluate, persist RedFlag rows.
+- Optionally bus.publish(campaign_id, "redflag", {...}) so the War Room badges the
+  vendor live.
 - Read-mostly: it evaluates and records; it does not change the price.
 
 HOW THE AGENT USES THE RESULT

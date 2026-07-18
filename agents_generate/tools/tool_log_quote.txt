@@ -1,51 +1,90 @@
 ================================================================================
- TOOL — log_quote   (webhook, WRITE)
+ TOOL — log_quote   (webhook, POST, WRITE)
  Persists the current structured, itemized quote and pushes it to the War Room.
 ================================================================================
 Publishes bus events  quote.new  (first time) and  quote.update  (every change),
 exactly the events the live dashboard already consumes (see caller.py _quote_event).
+Read tools/00_tool_config_reference.txt first.
 
-WHEN THE AGENT CALLS IT
+WHEN TO CALL
+------------
+Any time a price, line item, fee, or term is learned or changes: the opening number,
+each itemized fee, after a price move, after fees are revealed. Always send the FULL
+current quote (not a diff) so the server holds the complete latest picture.
+
+PASTE-READY tool_config
 -----------------------
-Any time it learns or changes a price, a line item, a fee, or a term: the opening
-number, each itemized fee, after a price move, after fees are revealed. Always send
-the FULL current quote (not a diff) so the server has the complete latest picture.
-
-ELEVENLABS WEBHOOK TOOL CONFIG
-------------------------------
-name:        log_quote
-description: Record the current itemized quote for this vendor — every line item with
-             its amount and whether it's mandatory/included, plus deposit and validity
-             terms. Send the complete current quote each time anything changes.
-method:      POST
-url:         {{server_base_url}}/api/agent-tools/quote
-headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
-             Content-Type: application/json
-body params:
-  campaign_id   string  required = {{campaign_id}}
-  call_id       string  required = {{call_id}}
-  vendor_name   string  required = {{vendor_name}}
-  category      string  required
-  currency      string  optional default "USD"
-  line_items    array   required  each: { label, amount, unit, included(bool),
-                                          mandatory(bool), disclosed_voluntarily(bool) }
-  total         number  required  sum of line_items
-  terms         object  optional  { deposit_pct, deposit_refundable_until,
-                                     validity_days, binding(bool) }
-response_timeout: 8s
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "log_quote",
+    "description": "Record the CURRENT full itemized quote for this vendor: every line item with amount, unit, whether it is included and mandatory, plus deposit and validity terms. Call whenever any number, fee, or term is learned or changes. Send the complete current quote each time, not a diff.",
+    "response_timeout_secs": 8,
+    "api_schema": {
+      "url": "{{server_base_url}}/api/agent-tools/quote",
+      "method": "POST",
+      "content_type": "application/json",
+      "request_headers": {
+        "Authorization": { "secret_id": "agent_tools_secret" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "campaign_id": { "type": "string", "dynamic_variable": "campaign_id" },
+          "call_id":     { "type": "string", "dynamic_variable": "call_id" },
+          "vendor_name": { "type": "string", "dynamic_variable": "vendor_name" },
+          "category":    { "type": "string", "dynamic_variable": "category" },
+          "currency":    { "type": "string", "description": "ISO currency, default USD" },
+          "line_items": {
+            "type": "array",
+            "description": "Every quoted line item, fees included as separate rows",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label":                 { "type": "string",  "description": "e.g. 'Food & service', 'Delivery', 'Service charge 10%'" },
+                "amount":                { "type": "number",  "description": "amount in the quote currency" },
+                "unit":                  { "type": "string",  "description": "per_guest | per_hour | per_event | percent_of_subtotal" },
+                "included":              { "type": "boolean", "description": "true if part of the base package price" },
+                "mandatory":             { "type": "boolean", "description": "true if the vendor said it is unavoidable" },
+                "disclosed_voluntarily": { "type": "boolean", "description": "false if the vendor only admitted it when asked" }
+              },
+              "required": ["label", "amount", "unit"]
+            }
+          },
+          "total": { "type": "number", "description": "sum of all line_items amounts" },
+          "terms": {
+            "type": "object",
+            "properties": {
+              "deposit_pct":              { "type": "number",  "description": "deposit percentage required" },
+              "deposit_refundable_until": { "type": "string",  "description": "date the deposit stays refundable, ISO" },
+              "validity_days":            { "type": "integer", "description": "how many days the quote is valid" },
+              "binding":                  { "type": "boolean", "description": "true if the vendor called it a binding/firm quote" }
+            }
+          }
+        },
+        "required": ["campaign_id", "call_id", "category", "line_items", "total"]
+      }
+    },
+    "assignments": [
+      { "source": "response", "dynamic_variable": "current_quote_total", "value_path": "total" }
+    ]
+  }
+}
 
 SERVER CONTRACT
 ---------------
-- Validate campaign_id exists and matches an active call; reject otherwise.
+- Validate campaign_id exists and the call belongs to it; reject otherwise.
 - Upsert the Quote row (models.Quote) for (campaign_id, call_id, vendor).
 - Recompute normalized_per_unit (per guest / per hour / per event) for comparability.
 - bus.publish(campaign_id, "quote.new" | "quote.update", { quote_id, call_id,
     vendor_id, vendor_name, category, segment_key, opening_total, total, line_items }).
-Return: { "ok": true, "quote_id": "...", "normalized_per_unit": 72.5 }
+Return: { "ok": true, "quote_id": "...", "total": 8700, "normalized_per_unit": 72.5 }
 
 NOTES
 -----
 - Keep fees as SEPARATE line items with mandatory/included flags — comparability and
   red-flag detection both depend on itemization, not a lump sum.
-- disclosed_voluntarily=false marks a fee the vendor only admitted when asked — the
+- disclosed_voluntarily=false marks a fee the vendor admitted only when asked — the
   Receipt flags those.
+- First log_quote of a call = the OPENING quote; the server records opening_total so
+  the final report can show the negotiated delta.

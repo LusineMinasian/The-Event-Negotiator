@@ -1,45 +1,69 @@
 ================================================================================
- TOOL — reclassify_segment   (webhook, WRITE)
+ TOOL — reclassify_segment   (webhook, POST, WRITE)
  When a vendor turns out to be a different kind of business than we assumed.
 ================================================================================
 Publishes bus event  segment.reclassified  (see caller.py :: _reclassify) and
 mirrors backend/app/engines/segment_classifier.py.
+Read tools/00_tool_config_reference.txt first.
 
 WHY IT EXISTS
 -------------
 We pre-classify each vendor from Google Places data (type, rating, price level), but
 the phone reveals the truth: "it's just me, I'm the chef" turns a presumed
 full-service caterer into a solo operator. Different segment = different winning
-levers (relationship/repeat-business instead of staffing/volume). This tool records
-the correction and lets the agent re-fetch leverage.
+levers (relationship / repeat-business instead of staffing / volume). This records
+the correction so the agent can re-fetch leverage and pivot.
 
-ELEVENLABS WEBHOOK TOOL CONFIG
-------------------------------
-name:        reclassify_segment
-description: Record that this vendor is actually a different segment than we assumed,
-             based on what they revealed on the call. After calling this, call
-             get_verified_leverage again — your best levers have changed.
-method:      POST
-url:         {{server_base_url}}/api/agent-tools/reclassify
-headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
-             Content-Type: application/json
-body params:
-  campaign_id     string  required = {{campaign_id}}
-  call_id         string  required = {{call_id}}
-  to_segment_key  string  required  the corrected segment (e.g. catering__bespoke_chef)
-  reason          string  required  the reveal that justified it, in the vendor's words
-response_timeout: 8s
+WHEN TO CALL
+------------
+When the vendor reveals something that contradicts the assumed segment. Immediately
+after, call get_verified_leverage again with the new segment_key.
+
+PASTE-READY tool_config
+-----------------------
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "reclassify_segment",
+    "description": "Record that this vendor is actually a different segment than assumed, based on what they revealed (e.g. a solo operator, not a full team). After calling this, call get_verified_leverage again because my best levers have changed. to_segment_key must be a real segment for this category.",
+    "response_timeout_secs": 8,
+    "api_schema": {
+      "url": "{{server_base_url}}/api/agent-tools/reclassify",
+      "method": "POST",
+      "content_type": "application/json",
+      "request_headers": {
+        "Authorization": { "secret_id": "agent_tools_secret" }
+      },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "campaign_id":    { "type": "string", "dynamic_variable": "campaign_id" },
+          "call_id":        { "type": "string", "dynamic_variable": "call_id" },
+          "to_segment_key": { "type": "string", "description": "the corrected segment key, e.g. 'catering__bespoke_chef' — must be a valid segment for this category" },
+          "reason":         { "type": "string", "description": "the reveal that justified it, in the vendor's own words" }
+        },
+        "required": ["campaign_id", "call_id", "to_segment_key", "reason"]
+      }
+    },
+    "assignments": [
+      { "source": "response", "dynamic_variable": "segment_key",     "value_path": "to_segment_key" },
+      { "source": "response", "dynamic_variable": "segment_display", "value_path": "segment_display" }
+    ]
+  }
+}
 
 SERVER CONTRACT
 ---------------
-- Validate to_segment_key is a real segment for this category (reject free-text).
+- Validate to_segment_key is a real segment for this category (reject free text).
 - Update the Call's segment_key_final and the Quote's segment_key.
 - bus.publish(campaign_id, "segment.reclassified", { call_id, from_segment,
     to_segment, segment_display, note }) — the War Room shows the strategy pivot.
-Return: { "ok": true, "segment_display": "Bespoke chef",
+Return: { "ok": true, "to_segment_key": "catering__bespoke_chef",
+          "segment_display": "Bespoke chef",
           "strategy_change_note": "Now prioritize relationship & repeat-business levers." }
 
 AGENT FLOW AFTER RECLASSIFY
 ---------------------------
-1. reclassify_segment(...)  2. get_verified_leverage(... new segment_key ...)
+1. reclassify_segment(...)
+2. get_verified_leverage(... new segment_key from the assignment above ...)
 3. switch to the newly-ranked levers (often relationship) and continue negotiating.

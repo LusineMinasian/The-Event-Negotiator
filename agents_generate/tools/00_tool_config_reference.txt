@@ -1,0 +1,115 @@
+================================================================================
+ 00 — TOOL CONFIG REFERENCE   (read before pasting any tool)
+ The EXACT ElevenLabs webhook tool_config shape + the 3 rules that keep us honest.
+================================================================================
+Verified against the ElevenLabs "Create tool" API (POST /v1/convai/tools) and the
+webhook-tools docs. Every tool_*.txt in this folder gives a PASTE-READY tool_config
+that follows this shape. You can paste the JSON via the API, or fill the same fields
+in the dashboard tool builder (they map 1:1).
+
+--------------------------------------------------------------------------------
+RULE 1 — PIN identifiers to dynamic variables (never let the LLM invent them)
+--------------------------------------------------------------------------------
+campaign_id, call_id, vendor_name, category, segment_key identify WHICH deal an
+update belongs to. If the model fills them, it can route a price to the wrong call or
+hallucinate an id. So we PIN them: inside a parameter's schema, add
+    "dynamic_variable": "<name>"
+and ElevenLabs fills it from the conversation's dynamic variables, bypassing the LLM.
+Only genuinely conversational values (from_total, to_total, line_items, reason) are
+left for the model to fill from what the vendor actually said.
+
+--------------------------------------------------------------------------------
+RULE 2 — Auth via a WORKSPACE SECRET, not a literal token
+--------------------------------------------------------------------------------
+Create a workspace secret (Agents Platform -> Secrets) named e.g. agent_tools_secret,
+value = a long random string your server also holds. Reference it in headers as
+    "Authorization": { "secret_id": "agent_tools_secret" }
+Your endpoints reject any call whose bearer doesn't match. Never paste the raw token.
+
+--------------------------------------------------------------------------------
+RULE 3 — Server-side, TRUST the pinned campaign_id, VALIDATE everything else
+--------------------------------------------------------------------------------
+campaign_id came from the trusted launch payload, so trust it. But confirm it exists,
+confirm the call belongs to it, and reject fabricated segment keys / lever keys /
+zero-delta "moves". The model proposes; the server disposes.
+
+--------------------------------------------------------------------------------
+EXACT tool_config SHAPE (field names verified)
+--------------------------------------------------------------------------------
+{
+  "tool_config": {
+    "type": "webhook",
+    "name": "snake_case_name",
+    "description": "One clear paragraph: WHAT it does + WHEN to call it + any rule.",
+    "response_timeout_secs": 8,          // NOTE: *_secs. keep short; 30 only for long-poll
+    "api_schema": {
+      "url": "https://.../path/{path_param}",
+      "method": "GET | POST",
+      "content_type": "application/json",
+      "request_headers": {
+        "Authorization": { "secret_id": "agent_tools_secret" }
+      },
+      "path_params_schema": {            // for {curly} vars in the url
+        "id": { "type": "string", "dynamic_variable": "call_id" }
+      },
+      "query_params_schema": {           // GET params — NOTE the properties/required wrapper
+        "properties": {
+          "campaign_id": { "type": "string", "dynamic_variable": "campaign_id" },
+          "current_total": { "type": "number", "description": "vendor's latest total" }
+        },
+        "required": ["campaign_id"]
+      },
+      "request_body_schema": {           // POST body — standard JSON Schema
+        "type": "object",
+        "properties": {
+          "campaign_id": { "type": "string", "dynamic_variable": "campaign_id" },
+          "note": { "type": "string", "description": "short human phrase" }
+        },
+        "required": ["campaign_id"]
+      }
+    },
+    "assignments": [                     // optional: store part of the RESPONSE into a
+      { "source": "response",            // dynamic variable for later turns/tools
+        "dynamic_variable": "verified_competitors",
+        "value_path": "competitors",
+        "preserve_native_type": true }
+    ]
+  }
+}
+
+--------------------------------------------------------------------------------
+FIELD NOTES
+--------------------------------------------------------------------------------
+- A GET tool uses query_params_schema (+ path_params_schema); a POST tool uses
+  request_body_schema. Don't send a body on GET.
+- query_params_schema is wrapped in { "properties": {...}, "required": [...] }.
+  request_body_schema uses { "type":"object", "properties":{...}, "required":[...] }.
+- "dynamic_variable": "<name>" on a property = filled from the dynamic variable, not
+  the model. Use it for every id/label we already know.
+- "description" on a model-filled property is how the LLM knows what to put there —
+  write it like an instruction ("the total BEFORE this move").
+- assignments let a READ tool's result flow into later turns: get_verified_leverage
+  stores competitors so the agent can reference them; finalize_spec stores spec_hash.
+- interruption/mode fields (interruption_mode, pre_tool_speech, execution_mode) can be
+  left default; for a quick silent write, execution_mode "immediate" is fine.
+
+--------------------------------------------------------------------------------
+OUTBOUND CALL LAUNCH (confirmed — this is how each call starts; already in
+backend/app/services/elevenlabs_connector.py :: initiate_outbound_call)
+--------------------------------------------------------------------------------
+POST https://api.elevenlabs.io/v1/convai/twilio/outbound-call
+{
+  "agent_id": "<caller agent id>",
+  "agent_phone_number_id": "<imported Twilio number id>",
+  "to_number": "+1704...",
+  "call_recording_enabled": true,
+  "conversation_initiation_client_data": {
+    "dynamic_variables": { campaign_id, call_id, vendor_name, spec_summary,
+                           segment_display, bottleneck, concession_ceiling,
+                           consent_line, levers_block, harmful_block,
+                           objectives_block, expected_line_items }
+  }
+}
+Response: { success, message, conversation_id, callSid }
+-> store conversation_id as the call ref; the post-call webhook echoes the same
+   dynamic_variables so results route home.

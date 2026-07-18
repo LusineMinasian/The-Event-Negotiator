@@ -37,44 +37,45 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.05fr_1fr]">
-      {/* brand / marketing panel */}
-      <div className="relative hidden lg:flex flex-col justify-between p-12 text-white overflow-hidden"
-           style={{ background: "linear-gradient(150deg, #4338ca 0%, #4f46e5 45%, #7c3aed 100%)" }}>
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-30 blur-3xl"
-             style={{ background: "radial-gradient(circle, #a78bfa, transparent 70%)" }} />
-        <div className="relative flex items-center gap-3 font-bold text-lg">
-          <span className="w-8 h-8 rounded-[10px] bg-white/20 backdrop-blur grid place-items-center">◆</span>
+      {/* brand / marketing panel — soft pastel hero */}
+      <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden"
+           style={{ background: "radial-gradient(70% 60% at 12% 0%, rgba(167,139,250,0.55), transparent 60%), radial-gradient(58% 55% at 96% 18%, rgba(244,160,200,0.5), transparent 60%), radial-gradient(64% 60% at 60% 104%, rgba(255,206,150,0.45), transparent 60%), #f6f1fb" }}>
+        <div className="relative flex items-center gap-3 font-bold text-lg" style={{ color: "var(--ink)" }}>
+          <span className="w-9 h-9 rounded-[11px] grid place-items-center" style={{ background: "linear-gradient(150deg,#322a42,#201a2b)", color: "#d9c8ff" }}>✦</span>
           The Event Negotiator
         </div>
         <div className="relative">
-          <h1 className="text-white text-[38px] leading-tight font-extrabold tracking-tight max-w-md">
+          <span className="section-eyebrow" style={{ background: "rgba(255,255,255,0.7)" }}>Voice negotiation</span>
+          <h1 className="text-[40px] leading-[1.05] font-extrabold tracking-tight max-w-md" style={{ color: "var(--ink)" }}>
             Your voice agents call the market and haggle for your event.
           </h1>
-          <div className="mt-9 grid gap-5 max-w-md">
+          <div className="mt-8 grid gap-3 max-w-md">
             {FEATURES.map((f) => (
-              <div key={f.title} className="flex gap-4 items-start">
-                <span className="text-2xl w-11 h-11 shrink-0 rounded-xl bg-white/15 backdrop-blur grid place-items-center">{f.icon}</span>
+              <div key={f.title} className="flex gap-4 items-start rounded-2xl p-3"
+                   style={{ background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.75)" }}>
+                <span className="text-2xl w-11 h-11 shrink-0 rounded-xl grid place-items-center"
+                      style={{ background: "#fff", boxShadow: "var(--shadow)" }}>{f.icon}</span>
                 <div>
-                  <div className="font-semibold">{f.title}</div>
-                  <div className="text-white/75 text-sm leading-relaxed">{f.body}</div>
+                  <div className="font-semibold" style={{ color: "var(--ink)" }}>{f.title}</div>
+                  <div className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>{f.body}</div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        <div className="relative text-white/70 text-sm">
+        <div className="relative text-sm" style={{ color: "var(--ink-2)" }}>
           Runs fully in simulation — no keys needed to see it work end to end.
         </div>
       </div>
 
       {/* form panel */}
-      <div className="flex items-center justify-center p-6 bg-[#eef1f8]">
+      <div className="flex items-center justify-center p-6" style={{ background: "var(--bg)" }}>
         <div className="card pad auth-card">
           <div className="brand lg:hidden mb-1"><span className="dot" /> The Event Negotiator</div>
           <h2 className="text-[22px] mb-1">{mode === "register" ? "Create your account" : "Welcome back"}</h2>
           <p className="sub mb-5">{mode === "register" ? "Create your first event in under a minute." : "Sign in to pick up where you left off."}</p>
 
-          <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-xl bg-[#eef1f8] border border-line">
+          <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-xl bg-[#f2ecfb] border border-line">
             {(["register", "login"] as const).map((m) => (
               <button key={m} type="button" onClick={() => { setMode(m); setErr(""); }}
                 className={`py-2 rounded-lg text-sm font-semibold transition-all ${mode === m ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"}`}>
