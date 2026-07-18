@@ -1,0 +1,67 @@
+================================================================================
+ SYSTEM TOOLS   (built into the ElevenLabs platform — enable, don't build)
+ These are toggled/configured on the agent; they are not your webhooks.
+================================================================================
+Enable these on the Caller agent (01_caller_negotiator.txt). They handle call
+mechanics the LLM shouldn't fake.
+
+--------------------------------------------------------------------------------
+1. end_call   — REQUIRED on the Caller
+--------------------------------------------------------------------------------
+Ends the phone call cleanly. The agent calls it exactly once, after it has a
+structured outcome.
+Config fields:
+  reason   (required)  why the call ended
+  message  (optional)  a short spoken sign-off before hanging up
+HOW WE USE IT: pair it with a final log_quote/end-of-call summary so the structured
+outcome (quote | callback | declined | unreachable) is already on the server before
+the line drops. Prompt the agent to always confirm deposit %, refundability, and
+validity before calling end_call.
+
+--------------------------------------------------------------------------------
+2. voicemail_detection   — REQUIRED on the Caller
+--------------------------------------------------------------------------------
+Detects an answering machine so the agent doesn't negotiate with a beep.
+Config fields:
+  reason   (required)
+BEHAVIOR: on detection, leave NO sensitive client detail; optionally leave a brief
+"calling for a quote, please call back" and end_call with outcome=unreachable.
+
+--------------------------------------------------------------------------------
+3. transfer_to_number   — the "Pull Me In" escalation path (optional but nice)
+--------------------------------------------------------------------------------
+Hands the LIVE call to a human (the client / an operator) when needed. This is the
+voice complement to the request_human webhook: request_human asks for a decision;
+transfer_to_number actually bridges the human onto the call if they want to speak.
+Config fields:
+  transfer_number  (required)  the human's phone number or SIP URI
+  client_message   (required)  what the vendor hears during the bridge
+  agent_message    (required)  the briefing the human hears before joining
+  reason           (optional)
+USE SPARINGLY: only when a human genuinely needs to talk, e.g. a final sign-off on a
+big number. For a simple approve/hold decision, request_human is lighter.
+
+--------------------------------------------------------------------------------
+4. skip_turn   — friction handling
+--------------------------------------------------------------------------------
+Lets the agent stay silent while the vendor is thinking, flipping papers, or talking
+to a colleague ("hang on, let me check the calendar"). Prevents the bot from
+talking over a pause and sounding robotic.
+Config fields:
+  reason   (optional)
+
+--------------------------------------------------------------------------------
+5. language_detection   — region handling
+--------------------------------------------------------------------------------
+Switches language mid-call (e.g. EN <-> DE for the eu_de_ch region). Pair with the
+region's consent script so disclosure is always in the right language.
+Config fields:
+  reason   (required)
+  language (required)  language code, e.g. "de"
+
+--------------------------------------------------------------------------------
+NOT USED HERE
+--------------------------------------------------------------------------------
+- transfer_to_agent (agent-to-agent handoff within ElevenLabs) — we keep one Caller
+  per call; skip unless you split intake/negotiation into separate agents.
+- play_keypad_touch_tone (DTMF) — only if you hit an IVR phone menu; optional.

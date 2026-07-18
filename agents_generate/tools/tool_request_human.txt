@@ -1,0 +1,51 @@
+================================================================================
+ TOOL — request_human   ("Pull Me In")   (webhook, WRITE + WAIT)
+ Human-in-the-loop handoff when the deal crosses the client's budget.
+================================================================================
+Publishes bus event  handoff.requested  and waits for  handoff.resolved
+(see caller.py :: _maybe_handoff + the handoff_events registry).
+
+WHY IT EXISTS
+-------------
+The agent negotiates but does not decide. When a price breaches the client's category
+budget, the honest move is to bring a human in, not to walk away or overcommit. In the
+UI this lights up "Pull Me In"; the client approves a higher ceiling or holds firm.
+
+ELEVENLABS WEBHOOK TOOL CONFIG
+------------------------------
+name:        request_human
+description: Ask the client to make a decision because the price crossed their budget
+             for this category. Use when you cannot proceed without a human's call.
+             After calling, tell the vendor "one moment, let me bring my client in,"
+             and wait for the decision before continuing.
+method:      POST
+url:         {{server_base_url}}/api/agent-tools/handoff
+headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
+             Content-Type: application/json
+body params:
+  campaign_id   string  required = {{campaign_id}}
+  call_id       string  required = {{call_id}}
+  vendor_name   string  required = {{vendor_name}}
+  reason        string  required  e.g. "budget_exceeded"
+  detail        string  required  e.g. "$9,600 is over the catering budget of $8,000"
+  current_total number  required
+response_timeout: 30s   (long poll — the server holds the response until the client
+                         decides or a timeout fires)
+
+SERVER CONTRACT
+---------------
+- Insert a Handoff row (reason, urgency, context).
+- bus.publish(campaign_id, "handoff.requested", { call_id, vendor_name, reason, detail }).
+- Block on an asyncio.Event (registry keyed by call_id) until the client acts in the
+  UI or a timeout hits, then bus.publish "handoff.resolved".
+Return (when resolved):
+  { "ok": true, "resolved_by": "user" | "timeout",
+    "decision": "approve_higher_ceiling" | "hold_at_budget",
+    "new_ceiling": 9800 }
+
+AGENT BEHAVIOR ON THE RESULT
+----------------------------
+- approve_higher_ceiling -> "Thanks for holding — that works, let's proceed at ..."
+- hold_at_budget / timeout -> "I'll need to keep it at <budget>. Can you meet that?"
+  If they can't, close as a callback or declined — never bust the budget silently.
+- Only ONE handoff per campaign by default; keep it for the moment that matters.

@@ -1,0 +1,59 @@
+================================================================================
+ TOOL — get_verified_leverage   (webhook, READ-ONLY)
+ The single source of truth for what the Caller is ALLOWED to say.
+ Backs the honesty guarantee: the agent may only cite numbers this returns.
+================================================================================
+Mirrors backend/app/engines/leverage.py :: get_verified_leverage.
+
+WHY IT EXISTS
+-------------
+Left to itself, an LLM will happily invent a competitor's price to win. This tool
+removes that temptation: the agent asks the server "what leverage do I actually
+have here?" and gets back (a) verified competing quotes it may quote out loud and
+(b) the ranked, pre-phrased levers that work on THIS vendor's segment — with the
+back-firing ones already stripped out.
+
+ELEVENLABS WEBHOOK TOOL CONFIG
+------------------------------
+name:        get_verified_leverage
+description: Fetch the verified competing quotes I am allowed to cite and the ranked
+             negotiation levers for this vendor. Call this BEFORE negotiating, and
+             again after any reclassify_segment. Never cite a number this did not
+             return.
+method:      GET
+url:         {{server_base_url}}/api/agent-tools/leverage
+headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
+query params (LLM fills from conversation / dynamic vars):
+  campaign_id     string  required  = {{campaign_id}}
+  call_id         string  required  = {{call_id}}
+  category        string  required  vendor category (catering|venue|decor|photo|music)
+  segment_key     string  required  current segment (starts = classified, updates on reclassify)
+  current_total   number  optional  the vendor's latest number, so ranking can adapt
+response_timeout: 8s
+
+SERVER RESPONSE (what the agent receives)
+-----------------------------------------
+{
+  "competitors": [
+     { "amount": 8400, "includes": "delivery", "category": "catering" }
+     // ONLY verified, user-approved quotes already gathered this campaign.
+     // Empty array if none yet -> agent must NOT claim to have a competing bid.
+  ],
+  "levers": [
+     { "key": "weekday_slot",  "display": "Weekday slot",
+       "phrase": "If we move it to a weekday instead, how does the price change?" },
+     { "key": "competing_bid", "display": "Competing bid",
+       "phrase": "I've got a firm quote at 8400 with delivery included. Can you beat it?" }
+     // ranked strongest-first for this segment; harmful levers already removed
+  ],
+  "forbidden_levers": ["volume", "urgency"]   // context for the agent; do not use
+}
+
+BEHAVIOR NOTES
+--------------
+- Read-only: publishes NOTHING to the bus (it doesn't change the deal).
+- The {amount} in competing_bid phrasing is filled by the SERVER from a real quote,
+  never by the model. If competitors is empty, the server must omit competing_bid /
+  price_match from levers so the agent literally cannot bluff.
+- Safe to call multiple times; cheap. Always call it after reclassify_segment because
+  the winning levers change with the segment.

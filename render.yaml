@@ -1,0 +1,45 @@
+# Render Blueprint — one Docker web service that serves the API, the
+# WebSocket stream, and the built frontend from a single URL.
+# Deploy: push this repo to GitHub, then Render → New → Blueprint.
+services:
+  - type: web
+    name: event-negotiator
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      # Auth signing key — generated once by Render, kept across deploys.
+      - key: JWT_SECRET
+        generateValue: true
+      # Same-origin frontend, so CORS is not really used, but keep it sane.
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: CALL_MODE
+        value: simulation
+      # --- Optional live connectors: add these in the Render dashboard to
+      # --- turn the System Check green. Left blank = simulation mode.
+      # - key: ELEVENLABS_API_KEY
+      #   sync: false
+      # - key: ELEVENLABS_AGENT_ID
+      #   sync: false
+      # - key: TWILIO_ACCOUNT_SID
+      #   sync: false
+      # - key: TWILIO_AUTH_TOKEN
+      #   sync: false
+      # - key: TWILIO_FROM_NUMBER
+      #   sync: false
+      # - key: GOOGLE_PLACES_API_KEY
+      #   sync: false
+
+    # --- Persist the SQLite database across deploys (optional) --------------
+    # The free plan has an EPHEMERAL disk: accounts/campaigns reset on every
+    # deploy and cold start. Fine for a demo. For durable data, switch `plan`
+    # to `starter` and uncomment the disk + DATABASE_URL below.
+    # disk:
+    #   name: negotiator-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    #   Also add to envVars:
+    #   - key: DATABASE_URL
+    #     value: sqlite:////var/data/negotiator.db

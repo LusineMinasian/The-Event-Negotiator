@@ -1,0 +1,53 @@
+================================================================================
+ TOOL — record_price_move   (webhook, WRITE)   ★ the realtime "deal changed" signal
+ The single most important live event: a price/term moved because of a lever.
+================================================================================
+Publishes bus event  price.move  — this is what makes the War Room ticker jump and
+what proves, on the record, that a number changed DURING the call because of leverage
+the agent gathered (a hard success criterion of the challenge).
+Mirrors the PriceEvent write + "price.move" publish in caller.py :: _negotiate.
+
+WHEN THE AGENT CALLS IT
+-----------------------
+The instant the vendor lowers a total, drops a fee, or changes a term in response to
+a lever the agent just used. Call this FIRST (for the live ticker), then log_quote
+with the new itemized numbers.
+
+ELEVENLABS WEBHOOK TOOL CONFIG
+------------------------------
+name:        record_price_move
+description: Record that the price or a term just changed because of a specific lever
+             I used. Call this immediately when the vendor moves, before updating the
+             full quote. Only attribute a move to a lever you actually just used.
+method:      POST
+url:         {{server_base_url}}/api/agent-tools/price-move
+headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
+             Content-Type: application/json
+body params:
+  campaign_id    string  required = {{campaign_id}}
+  call_id        string  required = {{call_id}}
+  vendor_name    string  required = {{vendor_name}}
+  category       string  required
+  from_total     number  required  the total BEFORE this move
+  to_total       number  required  the total AFTER this move
+  leverage_key   string  required  which lever caused it (e.g. "weekday_slot"); must
+                                    be one returned by get_verified_leverage
+  note           string  optional  short human phrase, e.g. "weekday + competing bid"
+response_timeout: 8s
+
+SERVER CONTRACT
+---------------
+- Validate campaign_id/call_id; reject if the move isn't attributable to a real,
+  previously-offered lever (guards against fabricated drama).
+- Insert a PriceEvent (from_total, to_total, leverage_type, attributed=true).
+- Update the SegmentObservation learning table (applied_count/moved_count/delta) so
+  the system learns which levers actually work per segment — same as the simulation.
+- bus.publish(campaign_id, "price.move", { call_id, vendor_name, category,
+    from_total, to_total, leverage, delta_pct }).
+Return: { "ok": true, "delta_pct": -5.4 }
+
+HONESTY GUARD
+-------------
+- to_total must differ from from_total; a "move" of 0 is not a move — don't log it.
+- Attribute to exactly ONE lever, the one just used. No lever, no move: if the vendor
+  drops price for no reason you gave, that's suspicious — don't manufacture a cause.

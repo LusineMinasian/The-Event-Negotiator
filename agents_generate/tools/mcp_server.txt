@@ -1,0 +1,57 @@
+================================================================================
+ MCP SERVER   (optional alternative to registering webhook tools one-by-one)
+ Expose all the write-tools through a single Model Context Protocol server.
+================================================================================
+You have two ways to give the Caller its tools:
+  A) Register each webhook tool individually (tool_*.txt). Simplest, fully supported.
+  B) Stand up ONE MCP server that exposes all of them, and point the agent at it.
+Both reach the same FastAPI endpoints; B is tidier if the toolset grows or is shared
+across several agents.
+
+WHAT MCP IS HERE
+----------------
+An MCP server advertises a set of tools over an SSE or streamable-HTTP endpoint.
+ElevenLabs connects to it, discovers the tools, and the agent can call them like any
+other tool. You'd wrap the same endpoints (leverage, quote, price-move, red-flags,
+reclassify, handoff) as MCP tools.
+
+CONNECT IT IN ELEVENLABS
+------------------------
+Agents Platform -> Tools/Integrations -> add MCP server:
+  Server URL:      https://mcp.yourhost.com/sse        (SSE or HTTP streamable)
+  Name:            negotiator-tools
+  Description:     Verified leverage + live quote/price/redflag/reclassify/handoff writes
+  Secret token:    stored as a WORKSPACE SECRET (treat like a password), sent as the
+                   Authorization header to your MCP server
+  HTTP headers:    any extra your server needs
+Then reference it on the agent via mcp_server_ids in the conversation config.
+
+APPROVAL MODE — set this deliberately
+-------------------------------------
+ElevenLabs offers three modes:
+  - Always Ask (default)     : agent asks permission before each tool call — WRONG for
+                               an autonomous phone call; it would stall mid-negotiation.
+  - Fine-Grained Approval    : ★ RECOMMENDED. Auto-approve the READ tool
+                               (get_verified_leverage) and the low-risk WRITE tools
+                               (log_quote, record_price_move, check_red_flags,
+                               reclassify_segment) so the call flows; keep request_human
+                               gated if you want a human to co-sign escalations.
+  - No Approval              : everything auto-runs. Fine for a controlled demo.
+
+TOOLS TO EXPOSE (map 1:1 to the webhook files)
+----------------------------------------------
+  get_verified_leverage  (read)   -> tool_get_verified_leverage.txt
+  log_quote              (write)  -> tool_log_quote.txt
+  record_price_move      (write)  -> tool_record_price_move.txt
+  check_red_flags        (read)   -> tool_check_red_flags.txt
+  reclassify_segment     (write)  -> tool_reclassify_segment.txt
+  request_human          (write)  -> tool_request_human.txt
+Each MCP tool's input schema = the body/query params documented in its file, and it
+must publish the same bus events so the War Room lights up identically.
+
+CAVEATS
+-------
+- MCP is unavailable under Zero-Retention / HIPAA modes — if you enable those, use
+  the individual webhook tools (option A) instead.
+- You are responsible for securing the MCP server; anything it can write, the agent
+  can trigger. Validate campaign_id server-side on every call.

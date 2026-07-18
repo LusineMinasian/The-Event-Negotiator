@@ -1,0 +1,51 @@
+================================================================================
+ TOOL — log_quote   (webhook, WRITE)
+ Persists the current structured, itemized quote and pushes it to the War Room.
+================================================================================
+Publishes bus events  quote.new  (first time) and  quote.update  (every change),
+exactly the events the live dashboard already consumes (see caller.py _quote_event).
+
+WHEN THE AGENT CALLS IT
+-----------------------
+Any time it learns or changes a price, a line item, a fee, or a term: the opening
+number, each itemized fee, after a price move, after fees are revealed. Always send
+the FULL current quote (not a diff) so the server has the complete latest picture.
+
+ELEVENLABS WEBHOOK TOOL CONFIG
+------------------------------
+name:        log_quote
+description: Record the current itemized quote for this vendor — every line item with
+             its amount and whether it's mandatory/included, plus deposit and validity
+             terms. Send the complete current quote each time anything changes.
+method:      POST
+url:         {{server_base_url}}/api/agent-tools/quote
+headers:     Authorization: Bearer <AGENT_TOOLS_SECRET>
+             Content-Type: application/json
+body params:
+  campaign_id   string  required = {{campaign_id}}
+  call_id       string  required = {{call_id}}
+  vendor_name   string  required = {{vendor_name}}
+  category      string  required
+  currency      string  optional default "USD"
+  line_items    array   required  each: { label, amount, unit, included(bool),
+                                          mandatory(bool), disclosed_voluntarily(bool) }
+  total         number  required  sum of line_items
+  terms         object  optional  { deposit_pct, deposit_refundable_until,
+                                     validity_days, binding(bool) }
+response_timeout: 8s
+
+SERVER CONTRACT
+---------------
+- Validate campaign_id exists and matches an active call; reject otherwise.
+- Upsert the Quote row (models.Quote) for (campaign_id, call_id, vendor).
+- Recompute normalized_per_unit (per guest / per hour / per event) for comparability.
+- bus.publish(campaign_id, "quote.new" | "quote.update", { quote_id, call_id,
+    vendor_id, vendor_name, category, segment_key, opening_total, total, line_items }).
+Return: { "ok": true, "quote_id": "...", "normalized_per_unit": 72.5 }
+
+NOTES
+-----
+- Keep fees as SEPARATE line items with mandatory/included flags — comparability and
+  red-flag detection both depend on itemization, not a lump sum.
+- disclosed_voluntarily=false marks a fee the vendor only admitted when asked — the
+  Receipt flags those.
