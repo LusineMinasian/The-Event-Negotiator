@@ -15,7 +15,13 @@ const TYPES = [
   { key: "baby_shower", emoji: "🍼", blurb: "Cozy venue, catering, décor", guests: 25, perGuest: 70 },
 ];
 const STEPS = ["Event", "Vibe", "Details", "Budget"];
-type Bubble = { id: string; kind: string; label: string; hex?: string; img?: string };
+const GUEST_PRESETS = [25, 50, 100, 150, 200];
+const EXAMPLES = [
+  "A rustic garden wedding, sage green and blush, 120 guests",
+  "Boho birthday, terracotta and gold, 40 people",
+  "Elegant baby shower, dusty blue, 25 guests",
+];
+type Bubble = { id: string; kind: string; label: string; hex?: string };
 
 export default function CreateEvent() {
   const nav = useNavigate();
@@ -29,6 +35,7 @@ export default function CreateEvent() {
   const [date, setDate] = useState("");
   const [budget, setBudget] = useState(15000);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [images, setImages] = useState<{ id: string; url: string }[]>([]);
   const [colors, setColors] = useState<string[]>([]);
   const [interim, setInterim] = useState("");
   const [agentLine, setAgentLine] = useState("");
@@ -39,7 +46,7 @@ export default function CreateEvent() {
   const [err, setErr] = useState("");
 
   const bid = useRef(0);
-  const files = useRef<File[]>([]);
+  const imageFiles = useRef<Record<string, File>>({});
   const pinUrls = useRef<string[]>([]);
   const transcript = useRef<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -69,6 +76,7 @@ export default function CreateEvent() {
   const addBubble = (b: Omit<Bubble, "id">) =>
     setBubbles((cur) => (cur.some((x) => x.kind === b.kind && x.label === b.label) ? cur : [...cur, { ...b, id: `b${bid.current++}` }]));
   const removeBubble = (id: string) => setBubbles((cur) => cur.filter((b) => b.id !== id));
+  const removeImage = (id: string) => { setImages((cur) => cur.filter((i) => i.id !== id)); delete imageFiles.current[id]; };
   const addColors = (hexes: string[]) => setColors((cur) => Array.from(new Set([...cur, ...hexes])).slice(0, 6));
 
   const ingest = (text: string) => {
@@ -94,9 +102,12 @@ export default function CreateEvent() {
   const onFiles = (list: FileList | null) => {
     if (!list) return;
     Array.from(list).filter((f) => f.type.startsWith("image/")).forEach((f) => {
-      files.current.push(f);
-      const url = URL.createObjectURL(f); const img = new Image();
-      img.onload = () => { const c = imageColors(img, 3); addBubble({ kind: "image", label: f.name, img: url }); if (c.length) addColors(c); };
+      const id = `i${bid.current++}`;
+      const url = URL.createObjectURL(f);
+      imageFiles.current[id] = f;
+      setImages((cur) => [...cur, { id, url }]);
+      const img = new Image();
+      img.onload = () => { const c = imageColors(img, 3); if (c.length) addColors(c); };
       img.src = url;
     });
   };
@@ -132,15 +143,30 @@ export default function CreateEvent() {
           colors, guests, sources: pinUrls.current, transcript: transcript.current.join(" "),
         },
       });
-      for (const f of files.current) { try { await api.uploadBoard(sid, f); } catch { /* keep going */ } }
+      for (const f of Object.values(imageFiles.current)) { try { await api.uploadBoard(sid, f); } catch { /* keep going */ } }
       for (const u of pinUrls.current) { try { await api.inspirationLink(sid, u); } catch { /* keep going */ } }
       await api.confirmSpec(sid);
       nav(`/spec/${sid}/discovery`);
     } catch (e: any) { setErr(e.message || "Could not create the event"); setBusy(false); }
   };
 
+  // keyboard flow: Enter advances (unless typing), Esc goes back
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === "Escape") { e.preventDefault(); back(); return; }
+      if (e.key === "Enter" && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "BUTTON") {
+        if (step < STEPS.length - 1) { if (!(step === 0 && !type)) go(step + 1); }
+        else if (!busy && type) create();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   const money = (n: number) => `${cur.symbol}${Math.round(n).toLocaleString()}`;
   const perGuest = guests > 0 ? Math.round(budget / guests) : 0;
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="wiz">
@@ -185,25 +211,43 @@ export default function CreateEvent() {
               <div className={`studio-stage studio-drop ${drag ? "drag" : ""}`}
                    onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
                    onDrop={(e) => { e.preventDefault(); setDrag(false); onFiles(e.dataTransfer.files); }}>
-                <div className="flex flex-col items-center text-center gap-3">
-                  <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleMic}>{listening ? "■" : "🎤"}</button>
-                  <div className="transcript-live">
-                    {agentLine ? `🤖 ${agentLine}` : interim || (listening ? "Listening…" : `Tap to talk · ${elReady ? "AI agent" : speech.supported ? "browser voice" : "type below"}`)}
+                {images.length > 0 && (
+                  <div className="stage-collage" aria-hidden>
+                    {images.slice(0, 9).map((im) => <img key={im.id} src={im.url} alt="" />)}
+                  </div>
+                )}
+                <div className="stage-content">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleMic}>{listening ? "■" : "🎤"}</button>
+                    <div className="transcript-live">
+                      {agentLine ? `🤖 ${agentLine}` : interim || (listening ? "Listening…" : `Tap to talk · ${elReady ? "AI agent" : speech.supported ? "browser voice" : "type below"}`)}
+                    </div>
+                  </div>
+                  <div className="bubble-grid mt-6" style={{ justifyContent: "center" }}>
+                    {bubbles.length === 0 && images.length === 0 && <span className="small">Your vibe will take shape here…</span>}
+                    {bubbles.map((b) => (
+                      <span key={b.id} className={`bubble ${b.kind === "color" ? "color" : b.kind === "source" ? "source" : ""}`}
+                            style={b.hex ? { background: b.hex, color: readableText(b.hex) } : undefined}>
+                        {b.kind === "source" && <span aria-hidden>📌</span>}
+                        {b.kind === "keyword" && <span style={{ opacity: 0.5 }}>#</span>}
+                        {b.label}<span className="x" onClick={() => removeBubble(b.id)}>×</span>
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <div className="bubble-grid mt-6" style={{ justifyContent: "center" }}>
-                  {bubbles.length === 0 && <span className="small">Your vibe will take shape here…</span>}
-                  {bubbles.map((b) => (
-                    <span key={b.id} className={`bubble ${b.kind === "color" ? "color" : b.kind === "image" ? "image" : b.kind === "source" ? "source" : ""}`}
-                          style={b.hex ? { background: b.hex, color: readableText(b.hex) } : undefined}>
-                      {b.kind === "image" && b.img && <img src={b.img} alt="" />}
-                      {b.kind === "source" && <span aria-hidden>📌</span>}
-                      {b.kind === "keyword" && <span style={{ opacity: 0.5 }}>#</span>}
-                      {b.label}<span className="x" onClick={() => removeBubble(b.id)}>×</span>
-                    </span>
+              </div>
+
+              {images.length > 0 && (
+                <div className="masonry mt-4">
+                  {images.map((im) => (
+                    <div className="tile" key={im.id}>
+                      <img src={im.url} alt="" />
+                      <button className="tile-x" onClick={() => removeImage(im.id)} aria-label="Remove">×</button>
+                    </div>
                   ))}
                 </div>
-              </div>
+              )}
+
               <div className="flex gap-3 flex-wrap mt-4 items-center">
                 <button className="btn ghost sm" onClick={() => fileInput.current?.click()}>🖼 Add images</button>
                 <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
@@ -212,6 +256,13 @@ export default function CreateEvent() {
                          onChange={(e) => setPinUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPin()} />
                   <button className="btn ghost sm" onClick={addPin}>Add</button>
                 </div>
+              </div>
+
+              <div className="try-row mt-3">
+                <span className="small">No mic? Try:</span>
+                {EXAMPLES.map((x) => (
+                  <button key={x} className="try-chip" onClick={() => ingest(x)}>{x}</button>
+                ))}
               </div>
             </>
           )}
@@ -223,7 +274,7 @@ export default function CreateEvent() {
               <div className="field-grid">
                 <div>
                   <label>Date</label>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <input type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
                 </div>
                 <div>
                   <label>Guests</label>
@@ -232,6 +283,11 @@ export default function CreateEvent() {
                     <input type="number" value={guests} min={1}
                            onChange={(e) => setGuests(Math.max(1, +e.target.value || 0))} style={{ textAlign: "center" }} />
                     <button className="btn ghost sm" onClick={() => setGuests((g) => g + 5)}>+</button>
+                  </div>
+                  <div className="preset-row">
+                    {GUEST_PRESETS.map((n) => (
+                      <button key={n} className={`preset ${guests === n ? "on" : ""}`} onClick={() => setGuests(n)}>{n}</button>
+                    ))}
                   </div>
                 </div>
                 <div>

@@ -60,6 +60,7 @@ export const api = {
     return req("POST", `/specs/${id}/board`, fd, true);
   },
   confirmSpec: (id: string) => req("POST", `/specs/${id}/confirm`),
+  reopenSpec: (id: string) => req("POST", `/specs/${id}/reopen`),
 
   // discovery + campaign
   discover: (specId: string, target = 4) =>

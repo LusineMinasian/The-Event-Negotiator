@@ -464,4 +464,34 @@
 
   .wiz-footer { display: flex; align-items: center; gap: 12px; justify-content: flex-end; padding: 16px 22px;
     border-top: 1px solid var(--line); background: rgba(255,255,255,0.72); backdrop-filter: blur(10px); }
+
+  /* vibe images — Pinterest-style, no filenames + soft background collage */
+  .studio-stage { position: relative; overflow: hidden; }
+  .stage-collage { position: absolute; inset: 0; z-index: 0; display: grid; grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr; filter: blur(16px) saturate(1.15); opacity: 0.32; transform: scale(1.12); }
+  .stage-collage img { width: 100%; height: 100%; object-fit: cover; }
+  .stage-content { position: relative; z-index: 1; }
+
+  .masonry { column-count: 4; column-gap: 12px; }
+  @media (max-width: 900px) { .masonry { column-count: 3; } }
+  @media (max-width: 620px) { .masonry { column-count: 2; } }
+  .masonry .tile { position: relative; break-inside: avoid; margin: 0 0 12px; border-radius: 14px; overflow: hidden;
+    box-shadow: var(--shadow); animation: bubble-in 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+  .masonry .tile img { width: 100%; display: block; }
+  .tile-x { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; border: none;
+    background: rgba(15, 23, 42, 0.55); color: #fff; font-size: 15px; line-height: 1; cursor: pointer;
+    opacity: 0; transition: opacity 0.15s, background 0.15s; backdrop-filter: blur(4px); }
+  .tile:hover .tile-x { opacity: 1; }
+  .tile-x:hover { background: var(--bad); }
+
+  .try-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .try-chip { padding: 7px 12px; border-radius: 999px; border: 1px dashed var(--line); background: rgba(255, 255, 255, 0.6);
+    color: var(--ink-2); font-size: 12px; cursor: pointer; transition: all 0.14s; text-align: left; }
+  .try-chip:hover { border-style: solid; border-color: var(--brand); color: var(--brand); background: #fff; }
+
+  .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .preset { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-weight: 600;
+    font-size: 13px; color: var(--ink-2); cursor: pointer; transition: all 0.14s; }
+  .preset:hover { border-color: #cfd6e6; }
+  .preset.on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, #fff); color: var(--brand); }
 }

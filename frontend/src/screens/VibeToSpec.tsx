@@ -1,23 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
 import { Stepper, Loading } from "../ui";
 
 export default function VibeToSpec() {
   const { specId } = useParams();
+  const [params] = useSearchParams();
+  const editMode = params.get("edit") === "1";
   const nav = useNavigate();
   const [payload, setPayload] = useState<any>(null);
   const [palette, setPalette] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  const [reopened, setReopened] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api.getSpec(specId!).then((s) => {
+    api.getSpec(specId!).then(async (s) => {
+      // Coming back to edit a confirmed plan? Un-freeze it (allowed only before calls
+      // start). Otherwise a confirmed spec continues forward to discovery.
+      if (s.confirmed && editMode) {
+        try {
+          await api.reopenSpec(specId!);
+          setReopened(true);
+          s = await api.getSpec(specId!);
+        } catch {
+          nav(`/spec/${specId}/discovery`); return;
+        }
+      } else if (s.confirmed) {
+        nav(`/spec/${specId}/discovery`); return;
+      }
       setPayload(s.payload);
       setPalette(s.payload.style?.palette || []);
       applyTheme(s.theme_tokens);
-      if (s.confirmed) nav(`/spec/${specId}/discovery`);
     });
   }, [specId]);
 
@@ -45,7 +60,12 @@ export default function VibeToSpec() {
 
   return (
     <div className="container themed">
-      <Stepper step={2} />
+      <Stepper step={2} specId={specId} />
+      {reopened && (
+        <div className="banner" style={{ marginBottom: 16 }}>
+          ✏️ Editing an existing plan — change anything below, then re-confirm to continue. Vendors are re-discovered from your changes.
+        </div>
+      )}
       <h1>Review &amp; complete your spec</h1>
       <p className="sub">Your voice intake already seeded the palette and the vibe. Add more inspiration if you like,
         then fill in the last details on the right — every path writes one structured job spec.</p>

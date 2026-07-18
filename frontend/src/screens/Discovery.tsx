@@ -37,7 +37,7 @@ export default function Discovery() {
 
   return (
     <div className="container">
-      <Stepper step={4} />
+      <Stepper step={4} specId={specId} campaignId={campaignId ?? undefined} />
       <div className="flex justify-between items-end flex-wrap gap-4">
         <div className="max-w-2xl">
           <div className="section-eyebrow">Step 4 · The call list</div>

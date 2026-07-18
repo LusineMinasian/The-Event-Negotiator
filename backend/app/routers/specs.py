@@ -3,11 +3,12 @@ import re
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_user
 from ..db import get_db
-from ..models import Event, Spec, User
+from ..models import Campaign, Event, Spec, User
 from ..engines import palette
 from ..schemas import SpecPatchIn
 from ..services import spec_builder
@@ -135,6 +136,28 @@ async def inspiration_link(spec_id: str, body: InspirationLinkIn,
     db.commit()
     return {"url": url, "image_url": image_url, "palette": pal,
             "theme_tokens": spec.theme_tokens, "error": error}
+
+
+@router.post("/{spec_id}/reopen")
+def reopen_spec(spec_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Un-freeze a confirmed spec so plans can be changed — allowed only while the vendor
+    calls haven't started. Discovery re-runs from the edited spec afterwards."""
+    spec = _load(spec_id, user, db)
+    if not spec.confirmed_at:
+        return {"reopened": True, "editable": True}
+    camp = db.scalar(select(Campaign).where(Campaign.spec_id == spec.id))
+    if camp and camp.status in ("running", "completed"):
+        raise HTTPException(409, "Calls are already in progress — this plan is locked.")
+    spec.confirmed_at = None
+    spec.spec_hash = ""
+    payload = dict(spec.payload)
+    payload.pop("spec_hash", None)
+    spec.payload = payload
+    event = db.get(Event, spec.event_id)
+    if event:
+        event.status = "draft"
+    db.commit()
+    return {"reopened": True, "editable": True}
 
 
 @router.post("/{spec_id}/confirm")

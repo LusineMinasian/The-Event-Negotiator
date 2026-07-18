@@ -36,7 +36,7 @@ export default function Confirm() {
 
   return (
     <div className="container themed" style={{ maxWidth: 820 }}>
-      <Stepper step={3} />
+      <Stepper step={3} specId={specId} />
       <h1>Confirm the job spec</h1>
       <p className="sub">Once confirmed, the spec is frozen and hashed. Every call describes exactly this — verbatim.</p>
 
