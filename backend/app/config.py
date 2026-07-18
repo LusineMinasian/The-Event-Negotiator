@@ -27,6 +27,8 @@ class Settings(BaseSettings):
 
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""
+    elevenlabs_phone_number_id: str = ""
+    elevenlabs_webhook_secret: str = ""  # if set, the post-call webhook requires a matching x-webhook-secret header
     public_base_url: str = ""
 
     twilio_account_sid: str = ""

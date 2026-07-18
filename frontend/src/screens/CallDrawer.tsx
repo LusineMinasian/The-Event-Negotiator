@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { Avatar } from "../ui";
 
 const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 
@@ -36,7 +37,13 @@ export default function CallDrawer({ campaignId, callId, live, onClose }: {
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2>{data?.vendor?.name || "Call"}</h2>
+          <div className="flex items-center gap-3">
+            <Avatar name={data?.vendor?.name || "Call"} />
+            <div>
+              <h2 className="m-0">{data?.vendor?.name || "Call"}</h2>
+              {data?.vendor && <div className="small"><span style={{ color: "var(--warn)" }}>★</span> {data.vendor.rating} · {data.vendor.review_count} reviews</div>}
+            </div>
+          </div>
           <button className="btn ghost sm" onClick={onClose}>Close</button>
         </div>
         {data?.call && (

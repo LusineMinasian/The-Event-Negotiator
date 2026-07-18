@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
+import { Loading } from "../ui";
 
 const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 
@@ -16,7 +17,7 @@ export default function Receipt() {
     });
   }, [campaignId]);
 
-  if (!r) return <div className="center">Building the receipt…</div>;
+  if (!r) return <Loading label="Building the receipt…" />;
 
   return (
     <div className="container themed">
@@ -26,7 +27,31 @@ export default function Receipt() {
           <Link className="btn ghost" to={`/campaign/${campaignId}/postmortem`}>Agent postmortem →</Link>
         </div>
 
-        <div className="card pad" style={{ marginTop: 12 }}>
+        <div className="savings-hero mt-3">
+          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 blur-2xl" style={{ background: "#fff" }} />
+          <div className="relative flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <div className="text-white/80 text-[11px] uppercase font-bold tracking-widest mb-1">Negotiated off the top</div>
+              <div className="text-[40px] font-extrabold leading-none mono">{money(r.savings)}</div>
+              <div className="text-white/85 text-sm mt-2">
+                Recommended total <b className="mono">{money(r.recommended_total)}</b>
+                {r.budget_ceiling != null && <> · budget <b className="mono">{money(r.budget_ceiling)}</b></>}
+              </div>
+            </div>
+            <div className="flex gap-6">
+              <div>
+                <div className="text-[26px] font-bold mono leading-none">{r.time_ledger.calls}</div>
+                <div className="text-white/80 text-xs mt-1">calls placed</div>
+              </div>
+              <div>
+                <div className="text-[26px] font-bold mono leading-none">{r.time_ledger.phone_time}</div>
+                <div className="text-white/80 text-xs mt-1">phone time saved</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card pad" style={{ marginTop: 16 }}>
           <div className="receipt-head">
             <div style={{ textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
               {r.event.type.replace("_", " ")} · {r.event.date} · {r.location.city} · {r.event.guest_count} guests

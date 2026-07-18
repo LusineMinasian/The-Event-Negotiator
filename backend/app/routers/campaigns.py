@@ -1,13 +1,14 @@
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..auth import current_user
 from ..config_loader import get_store
 from ..db import get_db
-from ..models import Call, Campaign, Handoff, PriceEvent, Quote, RedFlag, Spec, User, Utterance, Vendor
+from ..models import (Call, Campaign, Handoff, PriceEvent, Quote, RedFlag, SegmentObservation,
+                      Spec, User, Utterance, Vendor)
 from ..services import caller
 from ..services.event_bus import bus
 
@@ -21,6 +22,11 @@ async def start_campaign(campaign_id: str, user: User = Depends(current_user), d
         raise HTTPException(404, "Campaign not found")
     if campaign.status in ("running", "completed"):
         raise HTTPException(409, f"Campaign already {campaign.status}")
+    # Flip to "running" synchronously inside this request's transaction so a second
+    # concurrent /start sees it and hits the 409 guard (the task sets status only after
+    # an await, which is too late to prevent a double run).
+    campaign.status = "running"
+    db.commit()
     asyncio.create_task(caller.run_campaign(campaign_id))
     return {"status": "started"}
 
@@ -85,7 +91,7 @@ def receipt(campaign_id: str, user: User = Depends(current_user), db: Session = 
         total_seconds += c.duration_s
     for q in quotes:
         call = db.get(Call, q.call_id)
-        if call.outcome != "quote":
+        if not call or call.outcome != "quote":
             continue
         vendor = db.get(Vendor, q.vendor_id)
         flags = db.scalars(select(RedFlag).where(RedFlag.quote_id == q.id)).all()
@@ -125,6 +131,147 @@ def receipt(campaign_id: str, user: User = Depends(current_user), db: Session = 
         "savings": round(savings, 0),
         "time_ledger": {"calls": len(calls), "phone_seconds": total_seconds,
                         "phone_time": _fmt_hms(total_seconds)},
+    }
+
+
+@router.get("/{campaign_id}/metrics")
+def metrics(campaign_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Live command-center snapshot: KPIs + distributions for the dashboard.
+
+    Order-independent aggregates are computed server-side (the truth for a
+    late-joining or refreshed dashboard); the streaming curves on top are driven
+    by the WebSocket. `price_moves` is ordered so the client can seed its curve."""
+    campaign = db.get(Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(404, "Campaign not found")
+    store = get_store()
+    spec = db.get(Spec, campaign.spec_id)
+    budget_cfg = (spec.payload.get("budget", {}) if spec else {})
+
+    calls = db.scalars(select(Call).where(Call.campaign_id == campaign_id)).all()
+    quotes = db.scalars(select(Quote).where(Quote.campaign_id == campaign_id)).all()
+
+    outcomes: dict[str, int] = {}
+    phases: dict[str, int] = {}
+    coverage: dict[str, dict] = {}
+    calls_active = 0
+    phone_seconds = 0
+    for c in calls:
+        phone_seconds += c.duration_s
+        cov = coverage.setdefault(c.category, {"category": c.category, "total": 0, "done": 0})
+        cov["total"] += 1
+        if c.status == "completed":
+            outcomes[c.outcome or "done"] = outcomes.get(c.outcome or "done", 0) + 1
+            cov["done"] += 1
+        else:
+            calls_active += 1
+            phases[c.phase or "queued"] = phases.get(c.phase or "queued", 0) + 1
+
+    # per-quote savings (value the negotiation delivered = opening − negotiated subtotal)
+    total_saved = 0.0
+    saving_pcts: list[float] = []
+    savings_by_cat: dict[str, dict] = {}
+    vendors_cmp: list[dict] = []
+    quoted = 0
+    for q in quotes:
+        call = db.get(Call, q.call_id)
+        if not call or call.outcome != "quote":
+            continue
+        quoted += 1
+        neg = q.negotiation or {}
+        subtotal = neg.get("negotiated_subtotal", q.total)
+        saved = max(0.0, q.opening_total - subtotal)
+        total_saved += saved
+        if q.opening_total:
+            saving_pcts.append(round(saved / q.opening_total * 100, 1))
+        s = savings_by_cat.setdefault(q.category, {"category": q.category, "saved": 0.0,
+                                                   "opening": 0.0, "current": 0.0})
+        s["saved"] += saved
+        s["opening"] += q.opening_total
+        s["current"] += q.total
+        vendor = db.get(Vendor, q.vendor_id)
+        vendors_cmp.append({"vendor": vendor.name if vendor else "", "category": q.category,
+                            "opening": q.opening_total, "current": q.total,
+                            "outcome": call.outcome, "rank": q.rank})
+
+    red_flags = db.scalar(select(func.count()).select_from(RedFlag).join(
+        Quote, RedFlag.quote_id == Quote.id).where(Quote.campaign_id == campaign_id)) or 0
+    handoffs = db.scalars(select(Handoff).join(Call, Handoff.call_id == Call.id).where(
+        Call.campaign_id == campaign_id)).all()
+    handoffs_pending = sum(1 for h in handoffs if h.resolved_at is None)
+
+    # budget spent = best quote per category: the rank-1 pick once ranked, else the
+    # cheapest quote so far while calls are still live. Mirrors the receipt.
+    ranked_pick: dict[str, float] = {}
+    cheapest: dict[str, float] = {}
+    for q in quotes:
+        call = db.get(Call, q.call_id)
+        if not call or call.outcome != "quote":
+            continue
+        if q.rank == 1:
+            ranked_pick[q.category] = q.total
+        cheapest[q.category] = min(cheapest.get(q.category, q.total), q.total)
+    best_by_cat = {cat: ranked_pick.get(cat, cheapest[cat]) for cat in cheapest}
+    spent = round(sum(best_by_cat.values()), 0)
+    ceiling = budget_cfg.get("total_ceiling", 0) or 0
+
+    # ordered price moves (for the streaming savings curve to hydrate on refresh)
+    price_events = db.scalars(select(PriceEvent).join(Call, PriceEvent.call_id == Call.id)
+                              .where(Call.campaign_id == campaign_id)
+                              .order_by(PriceEvent.id)).all()
+    price_moves = []
+    for pe in price_events:
+        vendor = None
+        c = db.get(Call, pe.call_id)
+        if c:
+            vendor = db.get(Vendor, c.vendor_id)
+        lev = store.levers.get(pe.leverage_type, {})
+        price_moves.append({
+            "vendor": vendor.name if vendor else "", "category": c.category if c else "",
+            "from": pe.from_total, "to": pe.to_total,
+            "saving_pct": round((pe.from_total - pe.to_total) / pe.from_total * 100, 1) if pe.from_total else 0,
+            "leverage": lev.get("display", pe.leverage_type.replace("_", " ").title()),
+        })
+
+    # leverage effectiveness across segments (which levers actually move price)
+    obs = db.scalars(select(SegmentObservation)).all()
+    lev_agg: dict[str, dict] = {}
+    for o in obs:
+        a = lev_agg.setdefault(o.lever_key, {"lever": o.lever_key, "applied": 0, "moved": 0, "sum_delta": 0.0})
+        a["applied"] += o.applied_count or 0
+        a["moved"] += o.moved_count or 0
+        a["sum_delta"] += o.sum_delta_pct or 0.0
+    leverage_rows = []
+    for k, a in lev_agg.items():
+        disp = store.levers.get(k, {}).get("display", k.replace("_", " ").title())
+        leverage_rows.append({
+            "lever": k, "display": disp, "applied": a["applied"], "moved": a["moved"],
+            "avg_saving_pct": round(a["sum_delta"] / a["moved"], 1) if a["moved"] else 0.0,
+        })
+    leverage_rows.sort(key=lambda x: (-x["avg_saving_pct"], -x["applied"]))
+
+    return {
+        "status": campaign.status,
+        "kpi": {
+            "calls_total": len(calls), "calls_active": calls_active,
+            "calls_completed": sum(1 for c in calls if c.status == "completed"),
+            "quotes": quoted,
+            "avg_saving_pct": round(sum(saving_pcts) / len(saving_pcts), 1) if saving_pcts else 0.0,
+            "total_saved": round(total_saved, 0),
+            "red_flags": int(red_flags),
+            "handoffs_pending": handoffs_pending, "handoffs_total": len(handoffs),
+            "phone_seconds": phone_seconds, "phone_time": _fmt_hms(phone_seconds),
+            "budget": {"ceiling": ceiling, "spent": spent,
+                       "pct": round(spent / ceiling * 100, 1) if ceiling else 0,
+                       "over": bool(ceiling and spent > ceiling)},
+        },
+        "outcomes": outcomes,
+        "phases": phases,
+        "coverage": sorted(coverage.values(), key=lambda x: x["category"]),
+        "savings_by_category": sorted(savings_by_cat.values(), key=lambda x: -x["saved"]),
+        "leverage": leverage_rows,
+        "price_moves": price_moves,
+        "vendors": vendors_cmp,
     }
 
 

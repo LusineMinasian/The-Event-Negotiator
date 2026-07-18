@@ -2,6 +2,7 @@ import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom"
 import { useEffect, useState } from "react";
 import { useAuth } from "./auth";
 import { api } from "./api";
+import { Loading } from "./ui";
 import Login from "./screens/Login";
 import Dashboard from "./screens/Dashboard";
 import Onboarding from "./screens/Onboarding";
@@ -9,6 +10,7 @@ import VibeToSpec from "./screens/VibeToSpec";
 import Confirm from "./screens/Confirm";
 import Discovery from "./screens/Discovery";
 import WarRoom from "./screens/WarRoom";
+import LiveDashboard from "./screens/LiveDashboard";
 import Receipt from "./screens/Receipt";
 import Postmortem from "./screens/Postmortem";
 import ConfigSwitch from "./screens/ConfigSwitch";
@@ -45,12 +47,12 @@ function TopBar() {
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="center">Loading…</div>;
+  if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" state={{ from: loc }} replace />;
   return (
     <div className="app">
       <TopBar />
-      {children}
+      <div className="page" key={loc.pathname}>{children}</div>
     </div>
   );
 }
@@ -64,6 +66,7 @@ export default function App() {
       <Route path="/spec/:specId" element={<Protected><VibeToSpec /></Protected>} />
       <Route path="/spec/:specId/confirm" element={<Protected><Confirm /></Protected>} />
       <Route path="/spec/:specId/discovery" element={<Protected><Discovery /></Protected>} />
+      <Route path="/campaign/:campaignId/live" element={<Protected><LiveDashboard /></Protected>} />
       <Route path="/campaign/:campaignId/warroom" element={<Protected><WarRoom /></Protected>} />
       <Route path="/campaign/:campaignId/receipt" element={<Protected><Receipt /></Protected>} />
       <Route path="/campaign/:campaignId/postmortem" element={<Protected><Postmortem /></Protected>} />

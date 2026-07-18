@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
+import { Stepper, Loading } from "../ui";
 
 export default function VibeToSpec() {
   const { specId } = useParams();
@@ -38,19 +39,13 @@ export default function VibeToSpec() {
     }
   };
 
-  if (!payload) return <div className="center">Loading…</div>;
+  if (!payload) return <Loading label="Loading your spec…" />;
   const ev = payload.event, loc = payload.location, bud = payload.budget;
   const sym = bud.currency === "USD" ? "$" : bud.currency + " ";
 
   return (
     <div className="container themed">
-      <div className="stepper">
-        <span className="s">1 · Event</span><span>›</span>
-        <span className="s active">2 · Vibe</span><span>›</span>
-        <span className="s">3 · Confirm</span><span>›</span>
-        <span className="s">4 · Discovery</span><span>›</span>
-        <span className="s">5 · War Room</span>
-      </div>
+      <Stepper step={2} />
       <h1>Turn your vibe into a spec</h1>
       <p className="sub">Drop an inspiration board — the palette recolors this page (that's the vision model reading your board),
         and the structured spec fills in on the right. Both intake paths write the same job spec.</p>

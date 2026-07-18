@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { clearTheme } from "../palette";
+import { Loading } from "../ui";
 
 export default function Postmortem() {
   const { campaignId } = useParams();
@@ -10,10 +11,11 @@ export default function Postmortem() {
     clearTheme();
     api.postmortem(campaignId!).then(setPm);
   }, [campaignId]);
-  if (!pm) return <div className="center">Loading…</div>;
+  if (!pm) return <Loading label="Analyzing the campaign…" />;
 
   return (
     <div className="container" style={{ maxWidth: 900 }}>
+      <div className="section-eyebrow">Transparency</div>
       <h1>Agent postmortem</h1>
       <p className="sub">The honest part: what worked, what didn't, and where the sample was thin. Admitting the gaps
         reads as maturity, not weakness.</p>

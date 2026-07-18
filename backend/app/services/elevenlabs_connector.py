@@ -51,6 +51,49 @@ async def initiate_outbound_call(agent_phone_number_id: str, to_number: str,
         return r.json()
 
 
+async def verify_connection() -> dict:
+    """Best-effort health check for the dashboard's connector card. Confirms the API
+    key works and the configured Caller Agent + phone numbers exist. Never raises —
+    returns a structured status the UI can render even when live calls are off."""
+    status = {
+        "configured": bool(settings.elevenlabs_api_key),
+        "agent_id": settings.elevenlabs_agent_id or "",
+        "call_mode": settings.call_mode,
+        "connected": False,
+        "agent_name": "",
+        "voice_id": "",
+        "phone_numbers": [],
+        "error": "",
+    }
+    if not settings.elevenlabs_api_key:
+        status["error"] = "ELEVENLABS_API_KEY not set — running in simulation."
+        return status
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            if settings.elevenlabs_agent_id:
+                r = await client.get(f"{EL_API}/convai/agents/{settings.elevenlabs_agent_id}",
+                                     headers={"xi-api-key": settings.elevenlabs_api_key})
+                r.raise_for_status()
+                data = r.json()
+                status["agent_name"] = data.get("name", "")
+                status["voice_id"] = (((data.get("conversation_config") or {})
+                                       .get("tts") or {}).get("voice_id", ""))
+            pn = await client.get(f"{EL_API}/convai/phone-numbers",
+                                  headers={"xi-api-key": settings.elevenlabs_api_key})
+            if pn.status_code == 200:
+                body = pn.json()
+                rows = body if isinstance(body, list) else body.get("phone_numbers", [])
+                status["phone_numbers"] = [
+                    {"id": p.get("phone_number_id") or p.get("id", ""),
+                     "label": p.get("label", ""), "number": p.get("phone_number", "")}
+                    for p in rows
+                ]
+        status["connected"] = True
+    except Exception as exc:  # noqa: BLE001 — health check must not crash the dashboard
+        status["error"] = str(exc)[:200]
+    return status
+
+
 async def get_transcript(conversation_id: str) -> dict:
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.get(f"{EL_API}/convai/conversations/{conversation_id}",

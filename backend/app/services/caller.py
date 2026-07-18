@@ -22,6 +22,7 @@ from ..db import SessionLocal
 from ..engines import budget_guard, leverage, ranking, red_flag, segment_classifier
 from ..models import (Call, Campaign, Handoff, PriceEvent, Quote, RedFlag, SegmentObservation,
                       Spec, Utterance, Vendor)
+from . import elevenlabs_connector
 from .counterparty import Counterparty
 from .event_bus import bus
 
@@ -59,6 +60,26 @@ def _order_vendors(vendors: list[Vendor]) -> list[Vendor]:
 
 
 async def run_campaign(campaign_id: str) -> None:
+    """Public entrypoint (fire-and-forget task). Wraps the orchestration so a crash marks
+    the campaign 'failed' instead of leaving it stuck 'running' (which the 409 guard would
+    then block from ever restarting)."""
+    try:
+        await _run_campaign(campaign_id)
+    except Exception as exc:  # noqa: BLE001 — background task; must not vanish silently
+        import traceback
+        traceback.print_exc()
+        db = SessionLocal()
+        try:
+            c = db.get(Campaign, campaign_id)
+            if c and c.status != "completed":
+                c.status = "failed"
+                db.commit()
+        finally:
+            db.close()
+        await bus.publish(campaign_id, "campaign.failed", {"campaign_id": campaign_id, "error": str(exc)[:200]})
+
+
+async def _run_campaign(campaign_id: str) -> None:
     db = SessionLocal()
     try:
         campaign = db.get(Campaign, campaign_id)
@@ -144,6 +165,14 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
             "rating": vendor.rating, "review_count": vendor.review_count,
             "style": cp.style,
         })
+
+        # CALL_MODE=live: hand this vendor to the real ElevenLabs Caller Agent. On
+        # success the live transcript arrives via the webhook and drives this call's
+        # UI — so we stop here. Any failure falls through to the simulated choreography
+        # so the demo never stalls.
+        if settings.call_mode == "live" and settings.live_calls_available:
+            if await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key):
+                return
 
         region = store.region(region_key)
         consent = store.prompts.get("consent_scripts", {}).get(region.get("consent_script_key", "consent_us"), "")
@@ -243,6 +272,40 @@ async def _maybe_handoff(db, campaign_id, call, vendor, cp, payload, state, ts):
         await _say(db, campaign_id, call, "system", "Client approved a higher ceiling — continuing.", ts + 2)
     else:
         await _say(db, campaign_id, call, "system", "No pickup — capping at budget and continuing.", ts + 2)
+
+
+async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, payload: dict,
+                         resolved: dict, region_key: str) -> bool:
+    """Place a real outbound call through the ElevenLabs Caller Agent. Tags the call
+    with campaign_id + call_id as dynamic variables so the post-call webhook can route
+    the transcript back to this campaign. Returns True if the live call was accepted."""
+    store = get_store()
+    if not vendor.phone_e164:
+        return False
+    phone_id = settings.elevenlabs_phone_number_id
+    dynamic_variables = {
+        "campaign_id": campaign_id,
+        "call_id": call.id,
+        "vendor_name": vendor.name,
+        "spec_summary": spec_summary(payload),
+        "segment_display": store.segment(call.segment_key_at_start).get("display_name", ""),
+    }
+    try:
+        result = await elevenlabs_connector.initiate_outbound_call(
+            phone_id, vendor.phone_e164, dynamic_variables)
+    except Exception as exc:  # noqa: BLE001 — never let a live failure kill the campaign
+        await bus.publish(campaign_id, "call.phase", {"call_id": call.id, "phase": "dialing"})
+        await _say(db, campaign_id, call, "system",
+                   f"Live dial failed ({str(exc)[:80]}) — using simulation.", 0)
+        return False
+    call.twilio_sid = result.get("conversation_id", result.get("callSid", ""))
+    call.phase = "dialing"
+    db.commit()
+    await bus.publish(campaign_id, "call.live", {
+        "call_id": call.id, "vendor_name": vendor.name,
+        "conversation_id": call.twilio_sid, "to": vendor.phone_e164,
+    })
+    return True
 
 
 def _forced_outcome(vendor: Vendor) -> str:

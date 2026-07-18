@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
+import { Stepper, Loading } from "../ui";
 
 export default function Confirm() {
   const { specId } = useParams();
@@ -29,16 +30,13 @@ export default function Confirm() {
     }
   };
 
-  if (!spec) return <div className="center">Loading…</div>;
+  if (!spec) return <Loading label="Loading the spec…" />;
   const p = spec.payload;
   const sym = p.budget.currency === "USD" ? "$" : p.budget.currency + " ";
 
   return (
     <div className="container themed" style={{ maxWidth: 820 }}>
-      <div className="stepper">
-        <span className="s">1</span><span>›</span><span className="s">2</span><span>›</span>
-        <span className="s active">3 · Confirm</span><span>›</span><span className="s">4</span><span>›</span><span className="s">5</span>
-      </div>
+      <Stepper step={3} />
       <h1>Confirm the job spec</h1>
       <p className="sub">Once confirmed, the spec is frozen and hashed. Every call describes exactly this — verbatim.</p>
 

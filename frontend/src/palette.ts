@@ -27,4 +27,9 @@ export function applyTheme(tokens: ThemeTokens | null | undefined) {
 export function clearTheme() {
   const root = document.documentElement;
   delete root.dataset.themed;
+  // also drop the injected palette vars so a previous board's colors don't linger
+  for (const v of ["--palette-accent", "--palette-surface", "--palette-border",
+                   "--palette-g1", "--palette-g2", "--palette-g3"]) {
+    root.style.removeProperty(v);
+  }
 }

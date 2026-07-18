@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { clearTheme } from "../palette";
+import { Skeleton } from "../ui";
 
 function EventCol({ eventKey }: { eventKey: string }) {
   const [cfg, setCfg] = useState<any>(null);
   useEffect(() => { api.eventConfig(eventKey).then(setCfg); }, [eventKey]);
-  if (!cfg) return <div className="card pad">…</div>;
+  if (!cfg) return (
+    <div className="card pad flex flex-col gap-3">
+      <Skeleton h={24} w={140} />
+      {[80, 60, 70, 50].map((w, i) => <Skeleton key={i} h={14} w={`${w}%`} />)}
+    </div>
+  );
   return (
     <div className="card pad">
       <h2 style={{ textTransform: "capitalize" }}>{cfg.display_name}</h2>
@@ -35,6 +41,7 @@ export default function ConfigSwitch() {
 
   return (
     <div className="container">
+      <div className="section-eyebrow">Config, not code</div>
       <h1>Config Switch</h1>
       <p className="sub">Vertical parameters are configuration, not code. The same engine runs every event —
         the levers, weights and harmful topics come from YAML. Swap the config, swap the market.</p>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { Stepper } from "../ui";
 
 const EMOJI: Record<string, string> = { wedding: "💍", birthday: "🎂", baby_shower: "🍼" };
 
@@ -31,13 +32,8 @@ export default function Onboarding() {
 
   return (
     <div className="container">
-      <div className="stepper">
-        <span className="s active">1 · Event</span><span>›</span>
-        <span className="s">2 · Vibe</span><span>›</span>
-        <span className="s">3 · Confirm</span><span>›</span>
-        <span className="s">4 · Discovery</span><span>›</span>
-        <span className="s">5 · War Room</span>
-      </div>
+      <Stepper step={1} />
+      <div className="section-eyebrow">New negotiation</div>
       <h1>What are we planning?</h1>
       <p className="sub">The event type loads a different config — categories, ranking weights, negotiation levers. Same engine, swapped config.</p>
 

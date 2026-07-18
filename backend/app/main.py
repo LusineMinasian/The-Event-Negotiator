@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db import init_db
-from .routers import auth, campaigns, config_meta, discovery, events, specs, ws
+from .routers import auth, campaigns, config_meta, discovery, events, integrations, specs, ws
 
 app = FastAPI(title="The Event Negotiator", version="1.0.0")
 
@@ -24,6 +24,7 @@ app.include_router(specs.router)
 app.include_router(discovery.router)
 app.include_router(campaigns.router)
 app.include_router(config_meta.router)
+app.include_router(integrations.router)
 app.include_router(ws.router)
 
 

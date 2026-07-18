@@ -94,6 +94,7 @@ export default function WarRoom() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <span className={`chip ${connected ? "live" : "sim"}`}>{connected ? "● connected" : "○ connecting"}</span>
+          <Link className="btn ghost sm" to={`/campaign/${campaignId}/live`}>← Dashboard</Link>
           {status === "completed" && <Link className="btn" to={`/campaign/${campaignId}/receipt`}>View receipt →</Link>}
         </div>
       </div>

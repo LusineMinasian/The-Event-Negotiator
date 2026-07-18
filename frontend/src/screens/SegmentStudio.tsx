@@ -40,6 +40,7 @@ export default function SegmentStudio() {
 
   return (
     <div className="container">
+      <div className="section-eyebrow">Who you buy from</div>
       <h1>Segment Studio</h1>
       <p className="sub">A segment describes who you buy from — and that decides which negotiation is even possible.</p>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
