@@ -66,6 +66,7 @@ export const api = {
   discover: (specId: string, target = 4) =>
     req("POST", `/specs/${specId}/discover?target_per_category=${target}`),
   patchVendor: (id: string, body: any) => req("PATCH", `/vendors/${id}`, body),
+  vendorDetails: (id: string) => req("GET", `/vendors/${id}/details`),
   startCampaign: (id: string) => req("POST", `/campaigns/${id}/start`),
   campaign: (id: string) => req("GET", `/campaigns/${id}`),
   callDetail: (cid: string, callId: string) => req("GET", `/campaigns/${cid}/calls/${callId}`),

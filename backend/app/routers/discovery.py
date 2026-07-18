@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from urllib.parse import quote_plus
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_user
+from ..config import settings
 from ..config_loader import get_store
 from ..db import get_db
 from ..models import Campaign, Event, Spec, User, Vendor
@@ -70,6 +74,90 @@ def patch_vendor(vendor_id: str, body: dict, user: User = Depends(current_user),
         v.segment_key = body["segment_key"]
     db.commit()
     return {"ok": True}
+
+
+async def _google_details(external_id: str) -> dict:
+    """Best-effort Google Place Details. Empty dict unless a key is set and the vendor
+    came from Places (seeded vendors have no external_id)."""
+    if not (settings.google_places_api_key and external_id):
+        return {}
+    fields = ("id,displayName,formattedAddress,websiteUri,googleMapsUri,"
+              "internationalPhoneNumber,regularOpeningHours,editorialSummary,photos")
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                f"https://places.googleapis.com/v1/places/{external_id}",
+                headers={"X-Goog-Api-Key": settings.google_places_api_key, "X-Goog-FieldMask": fields})
+            return r.json() if r.status_code == 200 else {}
+    except Exception:  # noqa: BLE001 — enrichment is optional, never 500 the card
+        return {}
+
+
+@router.get("/vendors/{vendor_id}/details")
+async def vendor_details(vendor_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """A 'place card' for a vendor: what we know + constructed Maps/search/social links,
+    enriched with real Google details (website, address, hours, photos) when available."""
+    v = db.get(Vendor, vendor_id)
+    if not v:
+        raise HTTPException(404, "Vendor not found")
+    store = get_store()
+    seg = store.segment(v.segment_key)
+    city = ""
+    if v.campaign_id:
+        camp = db.get(Campaign, v.campaign_id)
+        spec = db.get(Spec, camp.spec_id) if camp else None
+        if spec:
+            city = (spec.payload.get("location") or {}).get("city", "")
+    q = quote_plus(f"{v.name} {city}".strip())
+    econ = seg.get("economics", {})
+    card = {
+        "id": v.id, "name": v.name, "category": v.category,
+        "segment_display": seg.get("display_name", v.segment_key),
+        "style": (seg.get("counterparty") or {}).get("style"),
+        "rating": v.rating, "review_count": v.review_count,
+        "price": "$" * max(1, min(4, v.price_level or 2)),
+        "phone": v.phone_e164, "distance_km": v.distance_km, "city": city,
+        "maps_url": f"https://www.google.com/maps/search/?api=1&query={q}",
+        "google_url": f"https://www.google.com/search?q={q}",
+        "website": "", "address": "", "opening_hours": [], "photos": [],
+        "summary": seg.get("description") or f"{seg.get('display_name', v.segment_key)} · {econ.get('pricing_model', '')}".strip(" ·"),
+        "socials": {
+            "instagram": f"https://www.google.com/search?q={quote_plus(f'{v.name} {city} instagram')}",
+            "facebook": f"https://www.google.com/search?q={quote_plus(f'{v.name} {city} facebook')}",
+        },
+        "source": v.source, "live": False,
+    }
+    g = await _google_details(v.external_id)
+    if g:
+        card["live"] = True
+        card["website"] = g.get("websiteUri", "")
+        card["address"] = g.get("formattedAddress", "")
+        if g.get("googleMapsUri"):
+            card["maps_url"] = g["googleMapsUri"]
+        if (g.get("editorialSummary") or {}).get("text"):
+            card["summary"] = g["editorialSummary"]["text"]
+        card["opening_hours"] = (g.get("regularOpeningHours") or {}).get("weekdayDescriptions") or []
+        names = [p["name"] for p in (g.get("photos") or [])[:6] if p.get("name")]
+        enr = dict(v.enrichment or {}); enr["photo_names"] = names; v.enrichment = enr; db.commit()
+        card["photos"] = [f"/api/vendors/{v.id}/photo/{i}" for i in range(len(names))]
+    return card
+
+
+@router.get("/vendors/{vendor_id}/photo/{idx}")
+async def vendor_photo(vendor_id: str, idx: int, db: Session = Depends(get_db)):
+    """Proxy a Google Places photo so the API key never reaches the browser. Unauthenticated
+    because <img> can't send an Authorization header; it only serves a public place photo."""
+    v = db.get(Vendor, vendor_id)
+    names = ((v.enrichment or {}).get("photo_names") if v else None) or []
+    if not settings.google_places_api_key or idx < 0 or idx >= len(names):
+        raise HTTPException(404, "No photo")
+    url = (f"https://places.googleapis.com/v1/{names[idx]}/media"
+           f"?maxHeightPx=600&maxWidthPx=800&key={settings.google_places_api_key}")
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+        r = await client.get(url)
+        if r.status_code != 200:
+            raise HTTPException(404, "Photo unavailable")
+        return Response(content=r.content, media_type=r.headers.get("content-type", "image/jpeg"))
 
 
 def _vendors(db: Session, campaign_id: str) -> list[dict]:

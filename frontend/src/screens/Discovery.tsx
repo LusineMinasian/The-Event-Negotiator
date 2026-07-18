@@ -3,12 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { clearTheme } from "../palette";
 import { Stepper, Avatar, Skeleton } from "../ui";
+import PlaceCard from "./PlaceCard";
 
 export default function Discovery() {
   const { specId } = useParams();
   const nav = useNavigate();
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [vendors, setVendors] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
 
   useEffect(() => {
@@ -102,22 +104,27 @@ export default function Discovery() {
               </div>
               <div className="card overflow-hidden">
                 {vs.map((v) => (
-                  <div className="vendor-row" key={v.id} style={{ opacity: v.excluded ? 0.5 : 1 }}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar name={v.name} />
-                      <div className="min-w-0">
-                        <div className="font-semibold truncate">{v.name}</div>
-                        <div className="small">
-                          <span style={{ color: "var(--warn)" }}>★</span> {v.rating} · {v.review_count} reviews · {v.distance_km} km
+                  <div className="vendor-item" key={v.id}>
+                    <div className={`vendor-row ${expanded === v.id ? "open" : ""}`} style={{ opacity: v.excluded ? 0.5 : 1 }}
+                         onClick={() => setExpanded(expanded === v.id ? null : v.id)}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar name={v.name} />
+                        <div className="min-w-0">
+                          <div className="font-semibold truncate">{v.name}</div>
+                          <div className="small">
+                            <span style={{ color: "var(--warn)" }}>★</span> {v.rating} · {v.review_count} reviews · {v.distance_km} km
+                          </div>
                         </div>
                       </div>
+                      <span className="seg-tag">{v.segment_display}</span>
+                      {v.style ? <span className={`style-tag style-${v.style}`}>{v.style}</span> : <span />}
+                      <div title={`confidence ${Math.round(v.segment_confidence * 100)}%`}>
+                        <div className="conf-bar"><span style={{ width: `${v.segment_confidence * 100}%` }} /></div>
+                      </div>
+                      <button className="btn ghost sm" onClick={(e) => { e.stopPropagation(); toggle(v); }}>{v.excluded ? "Include" : "Exclude"}</button>
+                      <span className="row-chev" aria-hidden>{expanded === v.id ? "▲" : "▼"}</span>
                     </div>
-                    <span className="seg-tag">{v.segment_display}</span>
-                    {v.style && <span className={`style-tag style-${v.style}`}>{v.style}</span>}
-                    <div title={`confidence ${Math.round(v.segment_confidence * 100)}%`}>
-                      <div className="conf-bar"><span style={{ width: `${v.segment_confidence * 100}%` }} /></div>
-                    </div>
-                    <button className="btn ghost sm" onClick={() => toggle(v)}>{v.excluded ? "Include" : "Exclude"}</button>
+                    {expanded === v.id && <PlaceCard vendorId={v.id} category={v.category} />}
                   </div>
                 ))}
               </div>

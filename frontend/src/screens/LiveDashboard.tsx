@@ -4,17 +4,26 @@ import { api } from "../api";
 import { clearTheme } from "../palette";
 import { useCampaignSocket, WsEvent } from "../ws";
 import { AreaChart, Bars, Donut } from "../charts";
+import { Avatar } from "../ui";
+import CallDrawer from "./CallDrawer";
 
 const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 const CAT_COLORS = ["var(--brand)", "var(--good)", "var(--warn)", "#7a4fc0", "#2a5bd0"];
 
 type Feed = { id: number; kind: string; text: string; accent?: string };
+type Call = {
+  call_id: string; vendor_name: string; category: string; phase: string; status: string;
+  outcome?: string; last_line: string; opening?: number; total?: number;
+};
 
 export default function LiveDashboard() {
   const { campaignId } = useParams();
   const [m, setM] = useState<any>(null);
   const [conn, setConn] = useState<any>(null);
   const [feed, setFeed] = useState<Feed[]>([]);
+  const [calls, setCalls] = useState<Record<string, Call>>({});
+  const [selected, setSelected] = useState<string | null>(null);
+  const [liveUtterance, setLiveUtterance] = useState<any>(null);
   const [handoff, setHandoff] = useState<any>(null);
   const fid = useRef(0);
   const refetchT = useRef<number | undefined>(undefined);
@@ -42,19 +51,33 @@ export default function LiveDashboard() {
   const push = (kind: string, text: string, accent?: string) =>
     setFeed((f) => [{ id: fid.current++, kind, text, accent }, ...f].slice(0, 60));
 
+  const upd = (id: string, patch: Partial<Call>) =>
+    setCalls((c) => (c[id] ? { ...c, [id]: { ...c[id], ...patch } } : c));
+
   const handle = (e: WsEvent) => {
     const p = e.payload;
     switch (e.type) {
-      case "call.initiated": push("call", `Dialing ${p.vendor_name} · ${p.category}`); scheduleRefetch(); break;
-      case "call.live": push("live", `☎ Live call connected · ${p.vendor_name}`, "var(--good)"); break;
-      case "quote.new": push("quote", `New quote · ${p.vendor_name} · ${money(p.total)}`); scheduleRefetch(); break;
-      case "price.move":
+      case "call.initiated":
+        setCalls((c) => ({ ...c, [p.call_id]: {
+          call_id: p.call_id, vendor_name: p.vendor_name, category: p.category,
+          phase: "dialing", status: "in_progress", last_line: "" } }));
+        push("call", `Dialing ${p.vendor_name} · ${p.category}`); scheduleRefetch(); break;
+      case "call.phase": upd(p.call_id, { phase: p.phase }); break;
+      case "call.live": upd(p.call_id, { phase: "live" }); push("live", `☎ Live call connected · ${p.vendor_name}`, "var(--good)"); break;
+      case "utterance":
+        upd(p.call_id, { last_line: `${p.speaker === "agent" ? "🤖" : p.speaker === "vendor" ? "🏬" : "•"} ${p.text}` });
+        setLiveUtterance({ call_id: p.call_id, text: p.text, speaker: p.speaker });
+        break;
+      case "quote.new": upd(p.call_id, { opening: p.opening_total, total: p.total });
+        push("quote", `New quote · ${p.vendor_name} · ${money(p.total)}`); scheduleRefetch(); break;
+      case "quote.update": upd(p.call_id, { opening: p.opening_total, total: p.total }); break;
+      case "price.move": upd(p.call_id, { total: p.to_total });
         push("move", `${p.vendor_name} ${money(p.from_total)} → ${money(p.to_total)} · ${p.leverage}`, "var(--good)");
         scheduleRefetch(); break;
       case "segment.reclassified": push("reclass", `Reclassified → ${p.segment_display}`, "#7a4fc0"); scheduleRefetch(); break;
       case "handoff.requested": setHandoff(p); push("handoff", `Pull-me-in · ${p.vendor_name}`, "var(--bad)"); break;
       case "handoff.resolved": setHandoff(null); push("handoff", `Handoff resolved (${p.resolved_by})`); break;
-      case "call.ended": scheduleRefetch(); break;
+      case "call.ended": upd(p.call_id, { status: "completed", outcome: p.outcome, phase: "closed" }); scheduleRefetch(); break;
       case "campaign.completed": push("done", "Campaign complete — receipt ready", "var(--good)"); load(); break;
     }
   };
@@ -89,6 +112,7 @@ export default function LiveDashboard() {
     label: l.display, value: l.avg_saving_pct, color: "var(--brand)",
     caption: `moved ${l.moved}/${l.applied}`,
   }));
+  const callList = Object.values(calls);
 
   return (
     <div className="container wide">
@@ -134,6 +158,35 @@ export default function LiveDashboard() {
 
       <div className="dash-cols">
         <div className="dash-left">
+          <div className="card pad">
+            <div className="card-head">
+              <h3>Live calls</h3>
+              <span className="small">{callList.length ? `${callList.filter((c) => c.status !== "completed").length} active · click to open` : ""}</span>
+            </div>
+            <div className="calls-grid">
+              {callList.length === 0 && <div className="small">Placing calls…</div>}
+              {callList.map((c) => (
+                <button key={c.call_id} className={`call-tile ${c.status === "completed" ? c.outcome : "active"}`}
+                        onClick={() => setSelected(c.call_id)} style={{ textAlign: "left" }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar name={c.vendor_name} size={30} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate">{c.vendor_name}</div>
+                      <span className="phase-badge">{c.status === "completed" ? (c.outcome || "done") : c.phase}</span>
+                    </div>
+                    <span className="mono" style={{ fontWeight: 700, fontSize: 13 }}>
+                      {c.opening && c.total && c.total < c.opening && (
+                        <span className="small" style={{ textDecoration: "line-through", marginRight: 4 }}>{money(c.opening)}</span>
+                      )}
+                      {money(c.total)}
+                    </span>
+                  </div>
+                  <div className="last-line">{c.last_line}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="card pad">
             <div className="card-head">
               <h3>Negotiation movement</h3>
@@ -226,6 +279,11 @@ export default function LiveDashboard() {
         <button className="btn accent lg pullme" style={{ background: "var(--bad)" }} onClick={resolveHandoff}>
           🔴 Pull me in — {handoff.vendor_name} ({handoff.detail})
         </button>
+      )}
+
+      {selected && (
+        <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}
+                    onClose={() => setSelected(null)} />
       )}
     </div>
   );
