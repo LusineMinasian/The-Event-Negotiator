@@ -1,0 +1,18 @@
+# Keep the build context small and reproducible.
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/node_modules
+**/dist
+**/.vite
+frontend/tsconfig.tsbuildinfo
+backend/data
+storage
+*.db
+*.sqlite3
+.env
+.env.local
+*.log
+.git
+agents_generate

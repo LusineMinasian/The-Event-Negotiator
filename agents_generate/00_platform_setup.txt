@@ -1,0 +1,121 @@
+================================================================================
+ 00 — PLATFORM SETUP  (read this before building any agent)
+ Twilio link · dynamic variables · realtime model · webhook secret
+================================================================================
+
+--------------------------------------------------------------------------------
+A. CAN ELEVENLABS DIAL A TWILIO NUMBER DIRECTLY?  — YES.
+--------------------------------------------------------------------------------
+You do NOT need to build your own Twilio media bridge. ElevenLabs has a *native*
+Twilio integration: you import the Twilio number into ElevenLabs, link it to the
+agent, and ElevenLabs drives the outbound leg for you.
+
+One-time setup (ElevenLabs dashboard):
+  1. Agents Platform -> Phone Numbers -> Add number.
+  2. Choose Twilio. Paste your Twilio Account SID + Auth Token, pick the number.
+     - A purchased Twilio number  = inbound + outbound.
+     - A verified caller ID       = outbound only (fine for us).
+     ElevenLabs auto-configures the Twilio voice webhooks. You get back a
+     `phone_number_id`.
+  3. Link that number to your Caller agent.
+  4. Put the id in your env as ELEVENLABS_PHONE_NUMBER_ID (already read by
+     backend/app/config.py + used in caller.py `_dispatch_live`).
+
+Placing a call (already implemented in elevenlabs_connector.initiate_outbound_call):
+  POST https://api.elevenlabs.io/v1/convai/twilio/outbound-call
+  {
+    "agent_id": "<caller agent id>",
+    "agent_phone_number_id": "<phone_number_id>",
+    "to_number": "+1704...",
+    "conversation_initiation_client_data": {
+      "dynamic_variables": { ...see section B... }
+    }
+  }
+
+So: Twilio number -> imported into ElevenLabs -> linked to the Caller agent ->
+one POST per vendor. No SIP trunk or audio bridge required. (SIP trunking is
+available too if you ever outgrow Twilio, but you don't need it.)
+
+--------------------------------------------------------------------------------
+B. DYNAMIC VARIABLES — how the SAME job is described identically on every call
+--------------------------------------------------------------------------------
+The spec is confirmed ONCE by the user, then injected into each call at start time
+so the agent never improvises the job. In prompts, reference them as {{name}}.
+These are exactly the keys the backend already sends
+(see caller.py `_dispatch_live` + elevenlabs_connector.build_dynamic_variables):
+
+  campaign_id          our campaign id — MUST be echoed to every tool call so the
+                       server routes events to the right War Room stream
+  call_id              our internal call id for this vendor
+  vendor_name          e.g. "Bloom & Bramble Catering"
+  spec_summary         the frozen job, verbatim (e.g. "Wedding on 2026-09-12, 120
+                       guests, in Charlotte. Daytime slot, weekday flexible.")
+  segment_display      vendor type, e.g. "Full-service catering"
+  bottleneck           what this vendor type cares about, e.g. "staff_scheduling"
+  concession_ceiling   realistic room to move, e.g. "0.12"
+  consent_line         the exact AI-disclosure opener for the region
+  levers_block         ranked negotiation levers with their phrasing
+  harmful_block        levers that BACKFIRE for this segment (do NOT use them)
+  objectives_block     what "done" means for this call
+  expected_line_items  every fee to ask about, even if unmentioned
+
+System variables ElevenLabs fills automatically (use in prompts + tool bodies):
+  {{system__conversation_id}}   ElevenLabs conversation id (store as our call ref)
+  {{system__call_sid}}          Twilio call SID
+  {{system__caller_id}}         the number we dialed from
+  {{system__time_utc}}          current UTC time
+
+Defaults for testing: set `dynamic_variable_placeholders` in the agent config so you
+can preview the agent in the dashboard without launching a real campaign.
+
+--------------------------------------------------------------------------------
+C. THE REALTIME MODEL — how "deal changes" reach the War Room live
+--------------------------------------------------------------------------------
+Two channels, and it matters which does what:
+
+  1. MID-CALL, structured events  (this is the important one)
+     The agent calls WEBHOOK/SERVER TOOLS while still on the phone:
+       - log_quote          -> publishes  quote.new / quote.update
+       - record_price_move  -> publishes  price.move        <- the ticker jumps
+       - check_red_flags    -> publishes  redflag events
+       - reclassify_segment -> publishes  segment.reclassified
+       - request_human      -> publishes  handoff.requested  <- "Pull Me In" lights up
+     Each tool hits YOUR FastAPI endpoint, which validates and calls
+     bus.publish(campaign_id, <event>, <payload>). The War Room already subscribes
+     to that exact bus (see routers/ws.py + services/event_bus.py), so live calls
+     light up the identical UI as the simulation. THIS is how the server learns,
+     in realtime, that a price moved. Design your tool endpoints to emit the same
+     event names the simulation already emits (listed in each tool file).
+
+  2. LIVE TRANSCRIPT (optional, for a live subtitle track)
+     ElevenLabs streams the conversation over its own websocket (mint a signed URL
+     with GET /v1/convai/conversation/get-signed-url — already wrapped in
+     elevenlabs_connector.get_signed_url). Use it only if you want word-by-word
+     subtitles. The deal STATE (price, fees, flags) should ride channel 1, not be
+     parsed out of raw transcript.
+
+  3. AFTER THE CALL, the full record
+     ElevenLabs POSTs the finished transcript + analysis to your post-call webhook.
+     See tools/post_call_webhook.txt. The handler already exists at
+     POST /api/integrations/elevenlabs/webhook and replays turns as utterances.
+
+Rule of thumb: anything the War Room must react to WHILE the call is live = a tool
+call (channel 1). Anything that's just a record = post-call webhook (channel 3).
+
+--------------------------------------------------------------------------------
+D. AUTH / SECRETS
+--------------------------------------------------------------------------------
+- Post-call webhook: verify the `elevenlabs-signature` HMAC header with the shared
+  secret (ELEVENLABS_WEBHOOK_SECRET, already checked in routers/integrations.py).
+- Mid-call tool endpoints: put a static bearer/secret header on each webhook tool
+  (configured per tool in ElevenLabs) and check it server-side. Also reject any
+  campaign_id that doesn't exist (the ingestion route already does this).
+- Never let a tool accept a price/quote for a campaign_id it wasn't launched with —
+  campaign_id comes from the trusted dynamic variable, not from the model's mouth.
+
+--------------------------------------------------------------------------------
+E. BASE URL PLACEHOLDER USED IN THE TOOL FILES
+--------------------------------------------------------------------------------
+  {{server_base_url}}  = e.g. https://negotiator.yourhost.com
+  Mid-call tools live under  {{server_base_url}}/api/agent-tools/...
+  Post-call webhook lives at {{server_base_url}}/api/integrations/elevenlabs/webhook
