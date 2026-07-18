@@ -5,7 +5,7 @@ import { api } from "./api";
 import { Loading } from "./ui";
 import Login from "./screens/Login";
 import Dashboard from "./screens/Dashboard";
-import Onboarding from "./screens/Onboarding";
+import CreateEvent from "./screens/CreateEvent";
 import VibeToSpec from "./screens/VibeToSpec";
 import Confirm from "./screens/Confirm";
 import Discovery from "./screens/Discovery";
@@ -59,12 +59,21 @@ function Protected({ children }: { children: JSX.Element }) {
   );
 }
 
+// Immersive, full-screen (no top nav) — for the event-creation wizard.
+function ProtectedBare({ children }: { children: JSX.Element }) {
+  const { user, loading } = useAuth();
+  const loc = useLocation();
+  if (loading) return <Loading />;
+  if (!user) return <Navigate to="/login" state={{ from: loc }} replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
-      <Route path="/new" element={<Protected><Onboarding /></Protected>} />
+      <Route path="/new" element={<ProtectedBare><CreateEvent /></ProtectedBare>} />
       <Route path="/spec/:specId" element={<Protected><VibeToSpec /></Protected>} />
       <Route path="/spec/:specId/confirm" element={<Protected><Confirm /></Protected>} />
       <Route path="/spec/:specId/discovery" element={<Protected><Discovery /></Protected>} />

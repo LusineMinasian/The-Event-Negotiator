@@ -72,7 +72,7 @@ export default function Login() {
         <div className="card pad auth-card">
           <div className="brand lg:hidden mb-1"><span className="dot" /> The Event Negotiator</div>
           <h2 className="text-[22px] mb-1">{mode === "register" ? "Create your account" : "Welcome back"}</h2>
-          <p className="sub mb-5">{mode === "register" ? "Start your first negotiation in under a minute." : "Sign in to pick up where you left off."}</p>
+          <p className="sub mb-5">{mode === "register" ? "Create your first event in under a minute." : "Sign in to pick up where you left off."}</p>
 
           <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-xl bg-[#eef1f8] border border-line">
             {(["register", "login"] as const).map((m) => (

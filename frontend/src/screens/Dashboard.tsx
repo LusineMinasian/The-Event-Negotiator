@@ -22,7 +22,7 @@ export default function Dashboard() {
           <p className="sub mb-0">Each event runs the full loop: intake → calls → negotiation → ranked receipt.</p>
         </div>
         <button className="btn lg" onClick={() => nav("/new")}>
-          <span className="text-lg leading-none">+</span> New negotiation
+          <span className="text-lg leading-none">+</span> Create event
         </button>
       </div>
 
@@ -36,9 +36,9 @@ export default function Dashboard() {
       ) : events.length === 0 ? (
         <div className="card empty-state mt-6">
           <div className="empty-emoji">🎉</div>
-          <h2 className="mb-1">No negotiations yet</h2>
-          <p className="sub max-w-sm">Pick an event, drop an inspiration board, and let the fleet call the market for you.</p>
-          <button className="btn lg mt-2" onClick={() => nav("/new")}>Start your first negotiation →</button>
+          <h2 className="mb-1">No events yet</h2>
+          <p className="sub max-w-sm">Create an event, describe the vibe, and let the fleet call the market for you.</p>
+          <button className="btn lg mt-2" onClick={() => nav("/new")}>Create your first event →</button>
         </div>
       ) : (
         <div className="grid cols-3 mt-6">

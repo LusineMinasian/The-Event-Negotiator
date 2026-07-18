@@ -1,0 +1,79 @@
+================================================================================
+ POST-CALL WEBHOOK   (ElevenLabs -> your server, AFTER the call ends)
+ The full transcript + analysis, for the record. Already implemented in this repo.
+================================================================================
+Handler already exists: POST /api/integrations/elevenlabs/webhook
+(backend/app/routers/integrations.py). This file documents the contract so you can
+configure it in ElevenLabs and know what arrives.
+
+WHAT IT IS (vs. the mid-call tools)
+-----------------------------------
+Mid-call tools (tool_*.txt) push live DEAL STATE while the call is happening. This
+post-call webhook fires ONCE, after ElevenLabs finishes transcription + analysis, and
+delivers the whole conversation. Use it for the permanent record: transcript, summary,
+recording link, and any structured data ElevenLabs extracted. Our handler replays the
+turns onto the bus as utterances and closes the call, so even a fully-live call ends
+up rendered like the simulation.
+
+CONFIGURE IN ELEVENLABS
+-----------------------
+Agents settings -> Webhooks -> Post-call:
+  URL:    {{server_base_url}}/api/integrations/elevenlabs/webhook
+  Secret: generates a shared secret -> store as ELEVENLABS_WEBHOOK_SECRET (already
+          checked by the handler via the x-webhook-secret / elevenlabs-signature path).
+Your endpoint must return HTTP 200. ElevenLabs auto-disables a webhook after ~10+
+consecutive failures, so keep the handler fast and never throw on a malformed body.
+
+ROUTING BACK TO THE RIGHT CAMPAIGN
+----------------------------------
+We tag every outbound call with campaign_id + call_id as dynamic variables when we
+launch it (caller.py _dispatch_live). They come back inside
+conversation_initiation_client_data.dynamic_variables, and _campaign_id() in the
+handler digs them out. No campaign_id => the event is dropped (by design).
+
+PAYLOAD (native ElevenLabs post-call transcription)
+---------------------------------------------------
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1739537297,
+  "data": {
+    "conversation_id": "conv_abc",
+    "agent_id": "agent_xyz",
+    "status": "done",
+    "transcript": [
+      { "role": "agent", "message": "Hi, quick heads up — I'm an AI assistant...",
+        "time_in_call_secs": 0 },
+      { "role": "user",  "message": "Sure, go ahead.", "time_in_call_secs": 4 }
+      // ... full turn-by-turn ...
+    ],
+    "analysis": {
+      "call_successful": "success",
+      "transcript_summary": "Negotiated catering from $9,200 to $8,700 on a weekday...",
+      "data_collection_results": { ... }   // optional structured extraction (below)
+    },
+    "metadata": { "call_duration_secs": 214, "cost": ..., "start_time_unix_secs": ... },
+    "conversation_initiation_client_data": {
+      "dynamic_variables": { "campaign_id": "camp_123", "call_id": "call_456",
+                             "vendor_name": "Bloom & Bramble" }
+    }
+  }
+}
+
+SECURITY
+--------
+Verify the elevenlabs-signature HMAC header with the shared secret (the SDK's
+construct_event / constructEvent does signature + timestamp checks). Our handler also
+rejects unknown campaign_ids so nobody can inject events onto a guessed stream.
+
+OPTIONAL — EVALUATION / DATA COLLECTION (great for the eval set)
+---------------------------------------------------------------
+In the agent's Analysis settings you can define:
+  - Evaluation criteria (pass/fail the model judges per call), e.g.
+      "did_disclose_ai", "extracted_itemized_quote", "caught_below_market_flag",
+      "closed_with_structured_outcome".
+  - Data collection fields extracted into analysis.data_collection_results, e.g.
+      final_total, deposit_pct, fees_disclosed[], outcome.
+These arrive in this same payload and are perfect for the "golden calls" eval loop
+in the brief — score each practice call against the counterparties and iterate on the
+Caller prompt. This is the belt-and-suspenders check that the live tools captured the
+same numbers the transcript shows.
