@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
 import { Stepper, Loading } from "../ui";
+import { fmtMoney, fromUsd, toUsd } from "../money";
 
 export default function VibeToSpec() {
   const { specId } = useParams();
@@ -56,7 +57,7 @@ export default function VibeToSpec() {
 
   if (!payload) return <Loading label="Loading your spec…" />;
   const ev = payload.event, loc = payload.location, bud = payload.budget;
-  const sym = bud.currency === "USD" ? "$" : bud.currency + " ";
+  const cur = bud.currency || "USD";
 
   return (
     <div className="container themed">
@@ -118,9 +119,9 @@ export default function VibeToSpec() {
                    onChange={(e) => save({ ...payload, location: { ...loc, city: e.target.value } })} />
           </div>
           <div className="field">
-            <label>Budget ceiling ({bud.currency})</label>
-            <input type="number" value={bud.total_ceiling}
-                   onChange={(e) => save({ ...payload, budget: { ...bud, total_ceiling: +e.target.value } })} />
+            <label>Budget ceiling ({cur})</label>
+            <input type="number" value={Math.round(fromUsd(bud.total_ceiling, cur))}
+                   onChange={(e) => save({ ...payload, budget: { ...bud, total_ceiling: Math.round(toUsd(+e.target.value, cur)) } })} />
           </div>
           {payload.intake && ((payload.intake.keywords?.length || 0) > 0 || (payload.intake.colors?.length || 0) > 0) && (
             <div style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
@@ -138,7 +139,7 @@ export default function VibeToSpec() {
           <div className="spec-row"><span>Categories</span><span>{payload.categories.map((c: any) => c.key).join(", ")}</span></div>
           <div className="spec-row"><span>Region</span><span>{loc.region_profile.toUpperCase()}</span></div>
           <div className="spec-row"><span>Est. per guest</span>
-            <span className="mono">{sym}{Math.round(bud.total_ceiling / Math.max(ev.guest_count, 1))}</span></div>
+            <span className="mono">{fmtMoney(bud.total_ceiling / Math.max(ev.guest_count, 1), cur)}</span></div>
           <button className="btn lg accent" style={{ marginTop: 16, width: "100%", justifyContent: "center" }}
                   onClick={() => nav(`/spec/${specId}/confirm`)}>Continue to confirm →</button>
         </div>

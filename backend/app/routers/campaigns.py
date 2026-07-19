@@ -271,6 +271,7 @@ def metrics(campaign_id: str, user: User = Depends(current_user), db: Session = 
 
     return {
         "status": campaign.status,
+        "currency": budget_cfg.get("currency", "USD"),
         "kpi": {
             "calls_total": len(calls), "calls_active": calls_active,
             "calls_completed": sum(1 for c in calls if c.status == "completed"),

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
 import { Stepper, Loading } from "../ui";
+import { fmtMoney } from "../money";
 
 export default function Confirm() {
   const { specId } = useParams();
@@ -32,7 +33,7 @@ export default function Confirm() {
 
   if (!spec) return <Loading label="Loading the spec…" />;
   const p = spec.payload;
-  const sym = p.budget.currency === "USD" ? "$" : p.budget.currency + " ";
+  const cur = p.budget.currency || "USD";
 
   return (
     <div className="container themed" style={{ maxWidth: 820 }}>
@@ -44,7 +45,7 @@ export default function Confirm() {
         <div className="spec-row"><span>Event</span><span style={{ textTransform: "capitalize" }}>{p.event.type.replace("_", " ")} · {p.event.date}</span></div>
         <div className="spec-row"><span>Guests</span><span className="mono">{p.event.guest_count}</span></div>
         <div className="spec-row"><span>Location</span><span>{p.location.city} · {p.location.region_profile.toUpperCase()}</span></div>
-        <div className="spec-row"><span>Budget ceiling</span><span className="mono">{sym}{p.budget.total_ceiling.toLocaleString()}</span></div>
+        <div className="spec-row"><span>Budget ceiling</span><span className="mono">{fmtMoney(p.budget.total_ceiling, cur)}</span></div>
       </div>
 
       <h2 style={{ marginTop: 24 }}>Budget allocation</h2>
@@ -53,7 +54,7 @@ export default function Confirm() {
           <div key={cat} style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
               <span style={{ textTransform: "capitalize" }}>{cat}</span>
-              <span className="mono">{sym}{Math.round(p.budget.total_ceiling * frac).toLocaleString()} ({Math.round(frac * 100)}%)</span>
+              <span className="mono">{fmtMoney(p.budget.total_ceiling * frac, cur)} ({Math.round(frac * 100)}%)</span>
             </div>
             <div className="budget-bar"><span style={{ width: `${frac * 100}%` }} /></div>
           </div>

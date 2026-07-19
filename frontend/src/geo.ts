@@ -16,7 +16,7 @@ export const COUNTRIES: Country[] = [
   { code: "CH", name: "Switzerland", flag: "🇨🇭", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF ", scale: 1 },
   { code: "DE", name: "Germany", flag: "🇩🇪", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF ", scale: 1 },
   { code: "AT", name: "Austria", flag: "🇦🇹", region_profile: "eu_de_ch", currency: "CHF", symbol: "CHF ", scale: 1 },
-  { code: "AM", name: "Armenia", flag: "🇦🇲", region_profile: "eu_de_ch", currency: "AMD", symbol: "֏ ", scale: 400 },
+  { code: "AM", name: "Armenia", flag: "🇦🇲", region_profile: "eu_de_ch", currency: "AMD", symbol: "֏ ", scale: 365 },
 ];
 
 export const CITIES: Record<string, string[]> = {

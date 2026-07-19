@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "../api";
 import { Avatar } from "../ui";
 import { AgentPanel } from "./AgentInfo";
+import { fmtMoney } from "../money";
 
-const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
-
-export default function CallDrawer({ campaignId, callId, live, onClose }: {
-  campaignId: string; callId: string; live: any; onClose: () => void;
+export default function CallDrawer({ campaignId, callId, live, currency = "USD", onClose }: {
+  campaignId: string; callId: string; live: any; currency?: string; onClose: () => void;
 }) {
+  const money = (n?: number) => fmtMoney(n, currency);
   const [data, setData] = useState<any>(null);
   const [utterances, setUtterances] = useState<any[]>([]);
   const [intervening, setIntervening] = useState(false);
@@ -46,7 +47,7 @@ export default function CallDrawer({ campaignId, callId, live, onClose }: {
   // newest first — new phrases appear at the top instead of pushing the view down
   const feed = [...utterances].reverse();
 
-  return (
+  return createPortal((
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer" onClick={(e) => e.stopPropagation()}>
         {/* pinned header — always visible, never scrolls away */}
@@ -131,5 +132,5 @@ export default function CallDrawer({ campaignId, callId, live, onClose }: {
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

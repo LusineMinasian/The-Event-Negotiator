@@ -4,6 +4,7 @@ import { api } from "../api";
 import { clearTheme } from "../palette";
 import { useCampaignSocket, WsEvent } from "../ws";
 import { PullMeToast, QuestionPrompt } from "../ui";
+import { fmtMoney } from "../money";
 import CallDrawer from "./CallDrawer";
 import AgentInfo from "./AgentInfo";
 
@@ -12,8 +13,6 @@ type Call = {
   outcome?: string; segment_display: string; segment_key?: string; style?: string; last_line: string;
   rating: number; review_count: number; opening?: number; total?: number;
 };
-
-const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 
 export default function WarRoom() {
   const { campaignId } = useParams();
@@ -26,6 +25,8 @@ export default function WarRoom() {
   const [selected, setSelected] = useState<string | null>(null);
   const [liveUtterance, setLiveUtterance] = useState<{ call_id: string; text: string; speaker: string } | null>(null);
   const tid = useRef(0);
+  const currency = budget?.currency || "USD";
+  const money = (n?: number) => fmtMoney(n, currency);
 
   useEffect(() => { clearTheme(); }, []);
 
@@ -184,7 +185,7 @@ export default function WarRoom() {
 
       {selected && (
         <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}
-                    onClose={() => setSelected(null)} />
+                    currency={currency} onClose={() => setSelected(null)} />
       )}
     </div>
   );

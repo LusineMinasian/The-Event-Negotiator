@@ -3,8 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme } from "../palette";
 import { Loading } from "../ui";
-
-const SYM: Record<string, string> = { USD: "$", CHF: "CHF ", EUR: "€", AMD: "֏ " };
+import { fmtMoney, fromUsd } from "../money";
 
 export default function Receipt() {
   const { campaignId } = useParams();
@@ -16,25 +15,26 @@ export default function Receipt() {
 
   if (!r) return <Loading label="Building the receipt…" />;
 
-  const sym = SYM[r.currency] || "$";
-  const money = (n?: number) => (n == null ? "—" : sym + Math.round(n).toLocaleString());
+  const cur = r.currency || "USD";
+  const money = (n?: number) => fmtMoney(n, cur);
+  const loc = (n?: number) => Math.round(fromUsd(n || 0, cur)); // amounts in the chosen currency for the CSV
 
   const downloadCsv = () => {
     const rows: (string | number)[][] = [[
       "Category", "Vendor", "Contact", "Phone", "Rating", "Segment",
-      "Opening", "Negotiated", "Saved", "Change %", "Recommended", "Leverage",
+      `Opening (${cur})`, `Negotiated (${cur})`, `Saved (${cur})`, "Change %", "Recommended", "Leverage",
     ]];
     Object.entries(r.categories).forEach(([cat, items]: any) =>
       items.forEach((it: any) => {
-        const saved = Math.round((it.opening_total || 0) - (it.negotiated_subtotal ?? it.total));
+        const saved = loc((it.opening_total || 0) - (it.negotiated_subtotal ?? it.total));
         rows.push([cat, it.vendor, it.contact || "", it.phone || "", it.rating, it.segment_display,
-          Math.round(it.opening_total), Math.round(it.total), saved, it.delta_pct,
+          loc(it.opening_total), loc(it.total), saved, it.delta_pct,
           it.rank === 1 ? "yes" : "no", (it.leverage_used || []).join("; ")]);
       }));
     rows.push([]);
-    rows.push(["", "", "", "", "", "RECOMMENDED TOTAL", "", Math.round(r.recommended_total)]);
-    rows.push(["", "", "", "", "", "BUDGET CEILING", "", Math.round(r.budget_ceiling || 0)]);
-    rows.push(["", "", "", "", "", "NEGOTIATED DOWN", "", Math.round(r.savings)]);
+    rows.push(["", "", "", "", "", "RECOMMENDED TOTAL", "", loc(r.recommended_total)]);
+    rows.push(["", "", "", "", "", "BUDGET CEILING", "", loc(r.budget_ceiling || 0)]);
+    rows.push(["", "", "", "", "", "NEGOTIATED DOWN", "", loc(r.savings)]);
     const csv = rows.map((row) => row.map((c) => {
       const s = String(c ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

@@ -3,12 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { clearTheme } from "../palette";
 import { useCampaignSocket, WsEvent } from "../ws";
-import { AreaChart, Bars, Donut } from "../charts";
+import { AreaChart, Bars, Candles, Donut } from "../charts";
+import { fmtMoney } from "../money";
 import { Avatar, PullMeToast, QuestionPrompt } from "../ui";
 import CallDrawer from "./CallDrawer";
 import AgentInfo from "./AgentInfo";
-
-const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 const CAT_COLORS = ["var(--brand)", "var(--good)", "var(--warn)", "#7a4fc0", "#2a5bd0"];
 
 type Feed = { id: number; kind: string; text: string; accent?: string };
@@ -106,8 +105,15 @@ export default function LiveDashboard() {
     let acc = 0;
     return moves.map((mv) => (acc += Math.max(0, mv.from - mv.to)));
   }, [m]);
+  // per-move saving amounts — drives the little "trading" candlestick ticker
+  const ticker = useMemo(
+    () => (m?.price_moves || []).map((mv: any) => Math.max(0, mv.from - mv.to)),
+    [m],
+  );
 
   const k = m?.kpi;
+  const currency = m?.currency || "USD";
+  const money = (n?: number) => fmtMoney(n, currency);
   const done = m?.status === "completed";
   const outcomes: Record<string, number> = m?.outcomes || {};
   const outcomeSegs = [
@@ -214,6 +220,15 @@ export default function LiveDashboard() {
             <div className="small" style={{ marginTop: 6 }}>
               {curve.length} price moves landed · avg {k?.avg_saving_pct ?? 0}% off opening
             </div>
+
+            <div className="ticker">
+              <div className="ticker-head">
+                <span className="ticker-sym">SAV·USD</span>
+                <span className="ticker-chg up">▲ {k?.avg_saving_pct ?? 0}%</span>
+                <span className="small ticker-note">per-call savings</span>
+              </div>
+              <Candles series={ticker} />
+            </div>
           </div>
 
           <div className="grid cols-2">
@@ -296,7 +311,7 @@ export default function LiveDashboard() {
 
       {selected && (
         <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}
-                    onClose={() => setSelected(null)} />
+                    currency={currency} onClose={() => setSelected(null)} />
       )}
     </div>
   );

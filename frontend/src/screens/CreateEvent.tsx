@@ -175,14 +175,14 @@ export default function CreateEvent() {
     setPinUrl(""); setErr("");
   };
 
-  // As you type, show cities on that letter first (prefix match), then any that
-  // contain it. Empty query → the full list for the selected country.
+  // Empty query → the whole city list for the country (a real dropdown you can just
+  // pick from). As you type, cities on that letter first (prefix), then any that contain it.
   const citySuggest = useMemo(() => {
     const all = citiesFor(country); const q = city.trim().toLowerCase();
-    if (!q) return all.slice(0, 8);
+    if (!q) return all;
     const starts = all.filter((c) => c.toLowerCase().startsWith(q));
     const contains = all.filter((c) => c.toLowerCase().includes(q) && !c.toLowerCase().startsWith(q));
-    return [...starts, ...contains].slice(0, 8);
+    return [...starts, ...contains];
   }, [country, city]);
 
   const create = async () => {
@@ -195,7 +195,9 @@ export default function CreateEvent() {
       await api.patchSpec(sid, {
         event: { ...base.event, type, date, guest_count: guests },
         location: { ...base.location, city: city || base.location.city, region_profile, country },
-        budget: { ...base.budget, total_ceiling: budget, currency: cur.currency },
+        // slider is in local currency; store the ceiling in the USD base the
+        // backend computes in (scale == FX rate, so this round-trips exactly)
+        budget: { ...base.budget, total_ceiling: Math.round(budget / cur.scale), currency: cur.currency },
         style: tokens ? {
           ...(base.style || {}), source: "voice_intake",
           palette: bubbles.filter((b) => b.kind === "color").map((b) => ({ hex: b.hex, name: b.label })),
@@ -392,18 +394,27 @@ export default function CreateEvent() {
                 </div>
                 <div>
                   <label>City</label>
-                  <input ref={cityInputRef} placeholder={`Start typing… e.g. ${citiesFor(country)[0] || "your city"}`}
-                         value={city} autoComplete="off"
-                         onChange={(e) => { setCity(e.target.value); setCityHi(0); setCityFocus(true); placeCityMenu(); }}
-                         onFocus={() => { setCityFocus(true); setCityHi(0); placeCityMenu(); }}
-                         onBlur={() => setTimeout(() => setCityFocus(false), 150)}
-                         onKeyDown={(e) => {
-                           if (!cityFocus || citySuggest.length === 0) return;
-                           if (e.key === "ArrowDown") { e.preventDefault(); setCityHi((h) => Math.min(h + 1, citySuggest.length - 1)); }
-                           else if (e.key === "ArrowUp") { e.preventDefault(); setCityHi((h) => Math.max(h - 1, 0)); }
-                           else if (e.key === "Enter") { e.preventDefault(); setCity(citySuggest[cityHi] || city); setCityFocus(false); }
-                           else if (e.key === "Escape") { setCityFocus(false); }
-                         }} />
+                  <div className="city-field">
+                    <input ref={cityInputRef} placeholder={`Pick a city — e.g. ${citiesFor(country)[0] || "your city"}`}
+                           value={city} autoComplete="off"
+                           onChange={(e) => { setCity(e.target.value); setCityHi(0); setCityFocus(true); placeCityMenu(); }}
+                           onFocus={() => { setCityFocus(true); setCityHi(0); placeCityMenu(); }}
+                           onBlur={() => setTimeout(() => setCityFocus(false), 150)}
+                           onKeyDown={(e) => {
+                             if (!cityFocus || citySuggest.length === 0) return;
+                             if (e.key === "ArrowDown") { e.preventDefault(); setCityHi((h) => Math.min(h + 1, citySuggest.length - 1)); }
+                             else if (e.key === "ArrowUp") { e.preventDefault(); setCityHi((h) => Math.max(h - 1, 0)); }
+                             else if (e.key === "Enter") { e.preventDefault(); setCity(citySuggest[cityHi] || city); setCityFocus(false); }
+                             else if (e.key === "Escape") { setCityFocus(false); }
+                           }} />
+                    <button type="button" className={`city-caret ${cityFocus ? "open" : ""}`} tabIndex={-1}
+                            aria-label="Show cities"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              if (cityFocus) { setCityFocus(false); }
+                              else { setCityHi(0); placeCityMenu(); setCityFocus(true); cityInputRef.current?.focus(); }
+                            }}>▾</button>
+                  </div>
                   {cityFocus && citySuggest.length > 0 && cityMenu && (
                     <div className="city-menu" style={{ position: "fixed", top: cityMenu.top, left: cityMenu.left, width: cityMenu.width }}>
                       {citySuggest.map((c, i) => (

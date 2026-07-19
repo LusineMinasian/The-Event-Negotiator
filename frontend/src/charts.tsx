@@ -38,6 +38,47 @@ export function AreaChart({ points, height = 130, stroke = "var(--brand)" }:
   );
 }
 
+// A small candlestick strip — a nod to a trading terminal. Each candle is one
+// price move: body from the previous saving to this one, green when this call
+// saved more than the last, red when less. Honest data, market-chart styling.
+export function Candles({ series, height = 92, count = 22 }:
+  { series: number[]; height?: number; count?: number }) {
+  const W = 100, H = height, pad = 8;
+  const s = series.slice(-(count + 1));
+  if (s.length < 2) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: "block" }}>
+        <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="var(--line)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      </svg>
+    );
+  }
+  const candles = s.slice(1).map((v, i) => {
+    const open = s[i], close = v;
+    return { open, close, hi: Math.max(open, close), lo: Math.min(open, close), up: close >= open };
+  });
+  const max = Math.max(...s), min = Math.min(...s), span = max - min || 1;
+  const y = (v: number) => H - pad - ((v - min) / span) * (H - pad * 2);
+  const cw = W / candles.length;
+  const bw = Math.min(cw * 0.6, 5);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: "block" }}>
+      {candles.map((c, i) => {
+        const cx = (i + 0.5) * cw;
+        const col = c.up ? "var(--good)" : "var(--bad)";
+        const top = Math.min(y(c.open), y(c.close));
+        const h = Math.max(Math.abs(y(c.close) - y(c.open)), 1.5);
+        return (
+          <g key={i}>
+            <line x1={cx} x2={cx} y1={y(c.hi)} y2={y(c.lo)} stroke={col} strokeWidth="1"
+                  vectorEffect="non-scaling-stroke" opacity="0.7" />
+            <rect x={cx - bw / 2} y={top} width={bw} height={h} fill={col} rx="0.8" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 type Seg = { label: string; value: number; color: string };
 
 export function Donut({ segments, size = 148, thickness = 18, centerLabel, centerSub }:
