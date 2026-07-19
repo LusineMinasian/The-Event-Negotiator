@@ -32,6 +32,7 @@ export default function CreateEvent() {
   const [city, setCity] = useState("");
   const [cityFocus, setCityFocus] = useState(false);
   const [cityMenu, setCityMenu] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [cityHi, setCityHi] = useState(0);
   const [guests, setGuests] = useState(50);
   const [date, setDate] = useState("");
   const [budget, setBudget] = useState(15000);
@@ -174,9 +175,14 @@ export default function CreateEvent() {
     setPinUrl(""); setErr("");
   };
 
+  // As you type, show cities on that letter first (prefix match), then any that
+  // contain it. Empty query → the full list for the selected country.
   const citySuggest = useMemo(() => {
     const all = citiesFor(country); const q = city.trim().toLowerCase();
-    return (q ? all.filter((c) => c.toLowerCase().includes(q) && c.toLowerCase() !== q) : all).slice(0, 6);
+    if (!q) return all.slice(0, 8);
+    const starts = all.filter((c) => c.toLowerCase().startsWith(q));
+    const contains = all.filter((c) => c.toLowerCase().includes(q) && !c.toLowerCase().startsWith(q));
+    return [...starts, ...contains].slice(0, 8);
   }, [country, city]);
 
   const create = async () => {
@@ -386,14 +392,24 @@ export default function CreateEvent() {
                 </div>
                 <div>
                   <label>City</label>
-                  <input ref={cityInputRef} placeholder={`e.g. ${citiesFor(country)[0] || "your city"}`} value={city}
-                         onChange={(e) => { setCity(e.target.value); placeCityMenu(); }}
-                         onFocus={() => { setCityFocus(true); placeCityMenu(); }}
-                         onBlur={() => setTimeout(() => setCityFocus(false), 150)} />
+                  <input ref={cityInputRef} placeholder={`Start typing… e.g. ${citiesFor(country)[0] || "your city"}`}
+                         value={city} autoComplete="off"
+                         onChange={(e) => { setCity(e.target.value); setCityHi(0); setCityFocus(true); placeCityMenu(); }}
+                         onFocus={() => { setCityFocus(true); setCityHi(0); placeCityMenu(); }}
+                         onBlur={() => setTimeout(() => setCityFocus(false), 150)}
+                         onKeyDown={(e) => {
+                           if (!cityFocus || citySuggest.length === 0) return;
+                           if (e.key === "ArrowDown") { e.preventDefault(); setCityHi((h) => Math.min(h + 1, citySuggest.length - 1)); }
+                           else if (e.key === "ArrowUp") { e.preventDefault(); setCityHi((h) => Math.max(h - 1, 0)); }
+                           else if (e.key === "Enter") { e.preventDefault(); setCity(citySuggest[cityHi] || city); setCityFocus(false); }
+                           else if (e.key === "Escape") { setCityFocus(false); }
+                         }} />
                   {cityFocus && citySuggest.length > 0 && cityMenu && (
                     <div className="city-menu" style={{ position: "fixed", top: cityMenu.top, left: cityMenu.left, width: cityMenu.width }}>
-                      {citySuggest.map((c) => (
-                        <div key={c} className="city-opt" onMouseDown={() => { setCity(c); setCityFocus(false); }}>{c}</div>
+                      {citySuggest.map((c, i) => (
+                        <div key={c} className={`city-opt ${i === cityHi ? "hi" : ""}`}
+                             onMouseEnter={() => setCityHi(i)}
+                             onMouseDown={() => { setCity(c); setCityFocus(false); }}>{c}</div>
                       ))}
                     </div>
                   )}

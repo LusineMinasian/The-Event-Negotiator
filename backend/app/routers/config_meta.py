@@ -1,11 +1,18 @@
 """Config surface for S1/S9/S10 — lets the UI show the config layer and the segment
 matrix, and hot-reload it (spec 8.7)."""
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from ..config import settings
 from ..config_loader import get_store
+from ..services import agent_overrides
 
 router = APIRouter(prefix="/api/config", tags=["config"])
+
+
+class BehaviorIn(BaseModel):
+    prioritized: list[str] = []
+    muted: list[str] = []
 
 
 @router.get("/meta")
@@ -50,6 +57,22 @@ def segments(category: str | None = None, event: str | None = None):
             "style": (seg.get("counterparty") or {}).get("style"),
         })
     return {"segments": out}
+
+
+@router.get("/segments/{segment_key}/behavior")
+def get_behavior(segment_key: str):
+    return agent_overrides.get(segment_key) or {"prioritized": [], "muted": []}
+
+
+@router.post("/segments/{segment_key}/behavior")
+def set_behavior(segment_key: str, body: BehaviorIn):
+    return agent_overrides.set_override(segment_key, body.prioritized, body.muted)
+
+
+@router.delete("/segments/{segment_key}/behavior")
+def clear_behavior(segment_key: str):
+    agent_overrides.clear(segment_key)
+    return {"prioritized": [], "muted": []}
 
 
 @router.get("/event/{event_key}")

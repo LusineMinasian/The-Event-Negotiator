@@ -47,6 +47,12 @@ export const api = {
     return req("GET", `/config/segments?${q}`);
   },
   eventConfig: (key: string) => req("GET", `/config/event/${key}`),
+  behaviorGet: (key: string) =>
+    req("GET", `/config/segments/${encodeURIComponent(key)}/behavior`),
+  behaviorSet: (key: string, body: { prioritized: string[]; muted: string[] }) =>
+    req("POST", `/config/segments/${encodeURIComponent(key)}/behavior`, body),
+  behaviorClear: (key: string) =>
+    req("DELETE", `/config/segments/${encodeURIComponent(key)}/behavior`),
 
   // events + specs
   createEvent: (type: string, region_profile: string) =>

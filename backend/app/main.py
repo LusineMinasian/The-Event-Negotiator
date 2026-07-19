@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import BASE_DIR, settings
 from .db import init_db
-from .routers import auth, campaigns, config_meta, discovery, events, intake, integrations, specs, ws
+from .routers import (agent_tools, auth, campaigns, config_meta, discovery, events, intake,
+                      integrations, specs, ws)
 
 app = FastAPI(title="The Event Negotiator", version="1.0.0")
 
@@ -31,6 +32,7 @@ app.include_router(campaigns.router)
 app.include_router(config_meta.router)
 app.include_router(intake.router)
 app.include_router(integrations.router)
+app.include_router(agent_tools.router)
 app.include_router(ws.router)
 
 

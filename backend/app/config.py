@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     elevenlabs_intake_agent_id: str = ""  # conversational agent for the voice intake studio (falls back to agent_id)
     elevenlabs_phone_number_id: str = ""
     elevenlabs_webhook_secret: str = ""  # if set, the post-call webhook requires a matching x-webhook-secret header
+    agent_tools_secret: str = ""  # if set, /api/agent-tools/* requires a matching Authorization header (the ElevenLabs workspace secret)
     public_base_url: str = ""
 
     twilio_account_sid: str = ""

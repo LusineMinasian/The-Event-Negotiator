@@ -41,6 +41,19 @@ def resolve_config(event_key: str, category_key: str, segment_key: str) -> dict[
     for hk in harmful:
         levers.pop(hk, None)
 
+    # user behavior override (set from the UI): mute levers, or push some first.
+    # imported locally to avoid an engines<->services import cycle.
+    from ..services import agent_overrides
+    ov = agent_overrides.get(segment_key)
+    if ov:
+        for mk in ov.get("muted", []):
+            if len(levers) > 1:  # never leave the agent with nothing to push
+                levers.pop(mk, None)
+        top = max(levers.values(), default=0.5)
+        for i, pk in enumerate(ov.get("prioritized", [])):
+            if pk in levers:  # bump above everything, preserving the user's order
+                levers[pk] = top + 1.0 - i * 0.001
+
     # objectives: concat + dedup
     objectives = list(category.get("call_objectives", []))
     for o in segment.get("objectives_override", []):

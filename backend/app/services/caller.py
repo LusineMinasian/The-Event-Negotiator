@@ -353,6 +353,8 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
         "campaign_id": campaign_id,
         "call_id": call.id,
         "vendor_name": vendor.name,
+        "category": vendor.category,
+        "segment_key": call.segment_key_at_start,
         "spec_summary": spec_summary(payload),
         "segment_display": store.segment(call.segment_key_at_start).get("display_name", ""),
     }
