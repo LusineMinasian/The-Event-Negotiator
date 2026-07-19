@@ -55,6 +55,17 @@ class Settings(BaseSettings):
         )
 
     @property
+    def bridge_call_available(self) -> bool:
+        """Real-time transcript path: WE place the Twilio call with a media-stream that
+        bridges to the ElevenLabs agent, so transcript/prices stream live during the call.
+        Needs full Twilio + an ElevenLabs agent + a public base URL Twilio can reach over wss."""
+        return bool(
+            self.public_base_url
+            and self.elevenlabs_api_key and self.elevenlabs_agent_id
+            and self.twilio_account_sid and self.twilio_auth_token and self.twilio_from_number
+        )
+
+    @property
     def demo_call_available(self) -> bool:
         """A single real call to your own number (you play a vendor) via ElevenLabs
         native outbound — no Twilio needed. Everything else stays simulated."""

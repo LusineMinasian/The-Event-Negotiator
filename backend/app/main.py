@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import BASE_DIR, settings
 from .db import init_db
 from .routers import (agent_tools, auth, campaigns, config_meta, discovery, events, intake,
-                      integrations, settings as settings_router, specs, ws)
+                      integrations, settings as settings_router, specs, telephony, ws)
 
 app = FastAPI(title="SayWhen", version="1.0.0")
 
@@ -34,6 +34,7 @@ app.include_router(intake.router)
 app.include_router(integrations.router)
 app.include_router(settings_router.router)
 app.include_router(agent_tools.router)
+app.include_router(telephony.router)
 app.include_router(ws.router)
 
 

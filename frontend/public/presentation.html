@@ -13,6 +13,7 @@
       --ink:#1a1523; --ink-2:#47404f; --muted:#6e6779; --line:#ece7f3; --bg:#faf8fd;
       --surface:#ffffff; --brand:#7c3aed; --brand-2:#a855f7; --good:#12a150; --warn:#d97706;
       --bad:#e11d48; --radius:18px; --shadow:0 1px 2px rgba(26,21,40,.05), 0 12px 30px rgba(26,21,40,.07);
+      --grad:linear-gradient(150deg,var(--brand-2),var(--brand));
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
@@ -33,21 +34,23 @@
     .deck{ scroll-snap-type:y mandatory; }
     .slide{
       min-height:100vh; scroll-snap-align:start; display:flex; align-items:center;
-      padding:96px 32px 72px; position:relative;
+      padding:92px 32px 76px; position:relative;
     }
-    .inner{ width:100%; max-width:1120px; margin:0 auto; }
+    .inner{ width:100%; max-width:1140px; margin:0 auto; }
 
-    .eyebrow{ font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); margin-bottom:12px; }
+    .eyebrow{ display:inline-flex; align-items:center; gap:9px; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); margin-bottom:12px; }
+    .eyebrow::before{ content:""; width:22px; height:22px; border-radius:7px; background:var(--grad); box-shadow:0 4px 12px rgba(124,58,237,.32); }
     h1{ font-size:40px; font-weight:800; letter-spacing:-.032em; line-height:1.08; margin:0 0 12px; }
-    .sub{ font-size:17px; color:var(--ink-2); max-width:760px; margin:0 0 28px; line-height:1.55; }
+    .sub{ font-size:17px; color:var(--ink-2); max-width:800px; margin:0 0 26px; line-height:1.55; }
     h2{ font-size:20px; font-weight:700; letter-spacing:-.01em; margin:0 0 4px; }
     h3{ font-size:15px; font-weight:700; margin:0; }
     .muted{ color:var(--muted) } .small{ font-size:13px; color:var(--muted); line-height:1.5 }
+    .desc{ font-size:13.5px; color:var(--ink-2); line-height:1.5; margin:8px 0 0; }
 
     /* ── primitives ── */
-    .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; }
-    .card.tight{ padding:14px 16px; }
-    .grid{ display:grid; gap:14px; }
+    .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .card:hover{ transform:translateY(-3px); box-shadow:0 2px 6px rgba(26,21,40,.06), 0 18px 40px rgba(26,21,40,.12); border-color:color-mix(in srgb,var(--brand) 26%,var(--line)); }
+    .grid{ display:grid; gap:13px; }
     .c2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
     .c3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
     .c4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
@@ -55,54 +58,77 @@
     @media(max-width:900px){ .c3,.c4,.c5{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media(max-width:560px){ .c2,.c3,.c4,.c5{ grid-template-columns:minmax(0,1fr); } }
 
-    .layer{ border:1px solid var(--line); border-radius:var(--radius); background:color-mix(in srgb,var(--surface) 78%, transparent); padding:16px; }
-    .layer-h{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-    .layer-tag{ font:600 12px/1 'JetBrains Mono',monospace; color:var(--muted); }
-
-    .conn{ display:flex; align-items:center; justify-content:center; gap:10px; color:var(--muted); font:600 12px/1 'JetBrains Mono',monospace; padding:10px 0; }
-    .conn::before,.conn::after{ content:""; height:1px; flex:1; background:linear-gradient(90deg,transparent,var(--line),transparent); }
-
+    .ic{ font-size:15px; line-height:1; filter:saturate(1.1); }
     .chip{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:5px 11px; border-radius:999px; background:#f2ecfb; color:var(--ink-2); }
     .chip.brand{ background:#ede4fb; color:var(--brand); }
     .chip.good{ background:#e7f7f0; color:var(--good); }
     .chip.warn{ background:#fff3e2; color:#b26a06; }
     .chip.bad{ background:#fdecec; color:var(--bad); }
-    .key{ font:600 11px/1.4 'JetBrains Mono',monospace; padding:4px 8px; border-radius:7px; background:#f2ecfb; color:var(--ink-2); border:1px solid var(--line); display:inline-block; }
-    .row{ display:flex; flex-wrap:wrap; gap:7px; }
-    .stack>*+*{ margin-top:6px; }
-    .desc{ font-size:13.5px; color:var(--ink-2); line-height:1.5; margin:8px 0 0; }
+    .key{ font:600 11px/1.5 'JetBrains Mono',monospace; padding:3px 7px; border-radius:7px; background:#f2ecfb; color:var(--brand); border:1px solid var(--line); display:inline-block; }
+    .row{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
 
-    /* numbered phase steps */
-    .step{ display:flex; gap:12px; align-items:flex-start; }
-    .step-n{ flex:0 0 auto; width:26px; height:26px; border-radius:999px; display:grid; place-items:center;
-      font-weight:800; font-size:12px; color:#fff; background:linear-gradient(150deg,var(--brand-2),var(--brand)); }
+    /* ── tiers + animated spine (slide 1) ── */
+    .tier{ position:relative; border:1px solid var(--line); border-radius:var(--radius); background:color-mix(in srgb,var(--surface) 82%, transparent); padding:16px 16px 16px 20px; overflow:hidden; }
+    .tier::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--grad); }
+    .tier-h{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+    .tier-name{ display:inline-flex; align-items:center; gap:9px; font-weight:800; font-size:13px; letter-spacing:.09em; text-transform:uppercase; }
+    .tier-tag{ font:600 12px/1 'JetBrains Mono',monospace; color:var(--muted); }
+    .thread{ position:relative; display:flex; justify-content:center; padding:5px 0; }
+    .thread::before{ content:""; position:absolute; top:0; bottom:0; left:50%; width:2px; transform:translateX(-50%); background:linear-gradient(var(--brand),var(--brand-2)); opacity:.4; }
+    .thread .lbl{ position:relative; z-index:1; font:600 11.5px/1 'JetBrains Mono',monospace; color:var(--muted); background:var(--bg); padding:6px 13px; border:1px solid var(--line); border-radius:999px; display:inline-flex; gap:8px; align-items:center; }
+    .thread .lbl::after{ content:"▾"; color:var(--brand); font-size:12px; }
+
+    /* ── fleet roster (slide 2) ── */
+    .fleet{ display:flex; gap:13px; flex-wrap:wrap; }
+    .fleet-col{ flex:1; min-width:250px; border:1px dashed color-mix(in srgb,var(--brand) 24%,var(--line)); border-radius:14px; padding:13px; background:color-mix(in srgb,var(--surface) 60%,transparent); }
+    .fleet-col .lab{ font:800 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+    .tokens{ display:flex; flex-wrap:wrap; gap:8px; }
+    .token{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--surface); font-weight:700; font-size:13px; box-shadow:var(--shadow); }
+    .token .num{ font:700 11px/1 'JetBrains Mono',monospace; color:#fff; background:var(--grad); padding:3px 5px; border-radius:5px; }
+    .token .dotc{ width:9px; height:9px; border-radius:999px; }
+
+    /* ── horizontal phase pipeline (slide 2) ── */
+    .pipe{ display:flex; align-items:stretch; flex-wrap:wrap; gap:6px; }
+    .pstep{ flex:1; min-width:158px; position:relative; padding:13px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+    .pstep.glow{ border-color:color-mix(in srgb,var(--brand) 55%,var(--line)); box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 12%,transparent); }
+    .pnum{ width:24px; height:24px; border-radius:999px; display:grid; place-items:center; font-weight:800; font-size:12px; color:#fff; background:var(--grad); margin-bottom:8px; }
+    .parrow{ display:grid; place-items:center; color:var(--brand); font-weight:800; font-size:16px; opacity:.6; }
+    @media(max-width:820px){ .pipe{ flex-direction:column; } .parrow{ transform:rotate(90deg); } }
+
+    /* ── live data-flow pipeline (slide 3) ── */
+    .flow{ display:flex; align-items:center; flex-wrap:nowrap; }
+    .fnode{ flex:0 0 auto; text-align:center; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 12px; min-width:112px; box-shadow:var(--shadow); }
+    .fnode.accent{ border-color:color-mix(in srgb,var(--brand) 45%,var(--line)); box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 10%,transparent); }
+    .fnode .ft{ font-weight:700; font-size:13px; } .fnode .fd{ font-size:11px; color:var(--muted); margin-top:2px; }
+    .fedge{ flex:1 1 auto; min-width:16px; height:2px; position:relative; background:var(--line); overflow:hidden; }
+    .fedge::after{ content:""; position:absolute; top:-1.5px; left:-35%; width:35%; height:5px; border-radius:5px; background:linear-gradient(90deg,transparent,var(--brand),transparent); animation:dash 2.2s linear infinite; }
+    @media(max-width:760px){ .flow{ flex-direction:column; gap:8px; } .fedge{ display:none; } .fnode{ width:100%; } }
+
     .badge{ width:32px; height:32px; border-radius:9px; display:grid; place-items:center; color:#fff; font-weight:800; font-size:14px; flex:0 0 auto; }
-
     .stat{ text-align:center; }
-    .stat .n{ font-size:30px; font-weight:800; letter-spacing:-.02em; background:linear-gradient(150deg,var(--brand-2),var(--brand)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-    .stat .l{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+    .stat .n{ font-size:32px; font-weight:800; letter-spacing:-.02em; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1; }
+    .stat .l{ font-size:12.5px; color:var(--muted); margin-top:6px; line-height:1.4; }
 
-    /* ── chrome: top bar + nav ── */
-    .bar{ position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:center; justify-content:space-between;
-      padding:16px 28px; backdrop-filter:blur(8px); background:linear-gradient(#faf8fdd9,#faf8fd00); }
+    /* ── chrome ── */
+    .progress{ position:fixed; top:0; left:0; height:3px; z-index:30; width:0; background:var(--grad); box-shadow:0 0 12px rgba(124,58,237,.5); transition:width .45s cubic-bezier(.2,.7,.2,1); }
+    .bar{ position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:center; justify-content:space-between; padding:15px 28px; backdrop-filter:blur(8px); background:linear-gradient(#faf8fdd9,#faf8fd00); }
     .wordmark{ display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.02em; font-size:17px; }
-    .logo{ width:22px; height:22px; border-radius:7px; background:linear-gradient(150deg,var(--brand-2),var(--brand)); box-shadow:0 4px 12px rgba(124,58,237,.35); }
+    .logo{ width:22px; height:22px; border-radius:7px; background:var(--grad); background-size:200% 200%; box-shadow:0 4px 12px rgba(124,58,237,.35); animation:shimmer 6s ease infinite; }
     .bar .muted{ font-weight:600; font-size:13px; }
     .nav{ display:flex; align-items:center; gap:14px; }
     .dots{ display:flex; gap:7px; }
     .dot{ width:8px; height:8px; border-radius:999px; background:var(--line); border:0; padding:0; cursor:pointer; transition:.2s; }
-    .dot.on{ background:var(--brand); transform:scale(1.25); }
-    .counter{ font:600 12px/1 'JetBrains Mono',monospace; color:var(--muted); min-width:30px; text-align:right; }
+    .dot.on{ background:var(--brand); transform:scale(1.3); box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 14%,transparent); }
+    .counter{ font:600 12px/1 'JetBrains Mono',monospace; color:var(--muted); min-width:52px; text-align:right; }
     .arrows{ position:fixed; right:24px; bottom:22px; z-index:20; display:flex; gap:8px; }
-    .arrows button{ width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--surface);
-      box-shadow:var(--shadow); font-size:18px; color:var(--ink); display:grid; place-items:center; }
+    .arrows button{ width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--surface); box-shadow:var(--shadow); font-size:18px; color:var(--ink); display:grid; place-items:center; cursor:pointer; }
     .arrows button:hover{ color:var(--brand); border-color:color-mix(in srgb,var(--brand) 40%,var(--line)); }
     .arrows button:disabled{ opacity:.4; cursor:default; }
 
-    /* title slide */
-    .cover .inner{ max-width:900px; }
-    .cover h1{ font-size:56px; }
-    .cover .lead{ font-size:19px; color:var(--ink-2); max-width:680px; line-height:1.55; }
+    /* cover */
+    .cover .inner{ max-width:920px; }
+    .cover h1{ font-size:58px; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .cover .lead{ font-size:19px; color:var(--ink-2); max-width:700px; line-height:1.55; }
     .kicker{ display:inline-flex; gap:8px; align-items:center; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:22px; }
     .toc{ display:grid; gap:10px; margin-top:34px; grid-template-columns:repeat(3,minmax(0,1fr)); }
     @media(max-width:640px){ .toc{ grid-template-columns:minmax(0,1fr); } .cover h1{ font-size:40px; } }
@@ -112,11 +138,24 @@
     .toc .t{ font-weight:700; margin-top:8px; }
     .toc .d{ font-size:13px; color:var(--muted); margin-top:4px; line-height:1.45; }
 
-    @media(max-width:640px){ .slide{ padding:88px 18px 84px } h1{ font-size:30px } }
+    /* motion */
+    @keyframes dash{ to{ left:135%; } }
+    @keyframes shimmer{ 0%,100%{ background-position:0 0 } 50%{ background-position:100% 100% } }
+    @media (prefers-reduced-motion: no-preference){
+      .slide .inner > *{ opacity:0; transform:translateY(18px); transition:opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1); }
+      .slide.in .inner > *{ opacity:1; transform:none; }
+      .slide.in .inner > *:nth-child(2){ transition-delay:.05s } .slide.in .inner > *:nth-child(3){ transition-delay:.1s }
+      .slide.in .inner > *:nth-child(4){ transition-delay:.15s } .slide.in .inner > *:nth-child(5){ transition-delay:.2s }
+      .slide.in .inner > *:nth-child(6){ transition-delay:.25s } .slide.in .inner > *:nth-child(7){ transition-delay:.3s }
+      .slide.in .inner > *:nth-child(8){ transition-delay:.35s } .slide.in .inner > *:nth-child(9){ transition-delay:.4s }
+    }
+    @media(max-width:640px){ .slide{ padding:84px 18px 84px } h1{ font-size:30px } .cover h1{ font-size:38px } }
   </style>
+  <noscript><style>.slide .inner > *{ opacity:1 !important; transform:none !important; }</style></noscript>
 </head>
 <body>
 
+  <div class="progress" id="progress"></div>
   <header class="bar">
     <div class="wordmark"><span class="logo"></span>SayWhen <span class="muted">· technical deck</span></div>
     <div class="nav">
@@ -128,11 +167,11 @@
   <main class="deck" id="deck">
 
     <!-- ── COVER ── -->
-    <section class="slide cover" data-title="Cover">
+    <section class="slide cover in" data-title="Cover">
       <div class="inner">
         <span class="kicker">Challenge 01 · The Negotiator · ElevenLabs × Hack-Nation</span>
         <h1>SayWhen</h1>
-        <p class="lead">A fleet of voice agents that phones the vendor market, negotiates with <b>verified</b> leverage, and hands back a ranked, evidence-backed receipt — all on a live command center. The vertical is <b>config, not code</b>.</p>
+        <p class="lead">A fleet of voice agents that phones the vendor market, negotiates with <b>verified</b> leverage, and hands back a ranked, evidence-backed receipt — live on a command center. The vertical is <b>config, not code</b>.</p>
         <div class="row" style="margin-top:22px">
           <span class="chip brand">FastAPI · single process</span>
           <span class="chip">React 18 · Vite · TS</span>
@@ -155,36 +194,36 @@
         <h1>One orchestrator, N identical callers</h1>
         <p class="sub">A single FastAPI process serves the SPA, the REST API and the live WebSocket stream. Every deterministic decision — levers, red flags, ranking, budgets — is engine code; the LLM only talks.</p>
 
-        <div class="layer">
-          <div class="layer-h"><h2>Client</h2><span class="layer-tag">React 18 · Vite · TypeScript · Tailwind</span></div>
+        <div class="tier">
+          <div class="tier-h"><span class="tier-name"><span class="ic">🖥️</span>Client</span><span class="tier-tag">React 18 · Vite · TypeScript · Tailwind</span></div>
           <div class="grid c4">
-            <div class="card tight"><h3>Voice Studio</h3><p class="desc">Web Speech / ElevenLabs WebRTC intake → live spec bubbles + palette repaint.</p></div>
-            <div class="card tight"><h3>Live Command Center</h3><p class="desc">KPIs, negotiation curve, leverage effectiveness, outcomes donut — hydrated from <span class="key">/metrics</span>, streamed over WS.</p></div>
-            <div class="card tight"><h3>War Room</h3><p class="desc">Call tiles, price ticker, Pull-Me-In handoff, mid-call trade-off prompts.</p></div>
-            <div class="card tight"><h3>Receipt & Postmortem</h3><p class="desc">Ranked quotes, itemized fees, transcript-cited evidence, lever stats.</p></div>
+            <div class="card"><h3><span class="ic">🎙️</span> Voice Studio</h3><p class="desc">Web Speech / ElevenLabs WebRTC intake → live spec bubbles + palette repaint.</p></div>
+            <div class="card"><h3><span class="ic">📊</span> Command Center</h3><p class="desc">KPIs, negotiation curve, leverage effectiveness — hydrated from <span class="key">/metrics</span>, streamed over WS.</p></div>
+            <div class="card"><h3><span class="ic">📞</span> War Room</h3><p class="desc">Call tiles, price ticker, Pull-Me-In handoff, mid-call trade-off prompts.</p></div>
+            <div class="card"><h3><span class="ic">🧾</span> Receipt & Postmortem</h3><p class="desc">Ranked quotes, itemized fees, transcript-cited evidence, lever stats.</p></div>
           </div>
         </div>
 
-        <div class="conn">REST + WebSocket · seq-numbered event replay</div>
+        <div class="thread"><span class="lbl">REST + WebSocket · seq-numbered replay</span></div>
 
-        <div class="layer">
-          <div class="layer-h"><h2>Orchestrator</h2><span class="layer-tag">FastAPI · async · single process</span></div>
+        <div class="tier">
+          <div class="tier-h"><span class="tier-name"><span class="ic">⚙️</span>Orchestrator</span><span class="tier-tag">FastAPI · async · single process</span></div>
           <div class="grid c3">
-            <div class="card tight"><h3>Spec Store</h3><p class="desc">Job spec frozen & hashed (<span class="key">spec_hash</span>) — every call quotes the identical job.</p></div>
-            <div class="card tight"><h3>Segment Classifier</h3><p class="desc">Places signals → segment + confidence; mid-call reclassification.</p></div>
-            <div class="card tight"><h3>Leverage Engine</h3><p class="desc">4-level config merge → ranked levers; harmful levers hard-excluded.</p></div>
-            <div class="card tight"><h3>Red-Flag / Ranking</h3><p class="desc">Per-segment benchmarks; −30% rule; price · completeness · risk · reputation score.</p></div>
-            <div class="card tight"><h3>Budget Guard</h3><p class="desc">Per-category ceilings → escalate pressure or Pull Me In.</p></div>
-            <div class="card tight"><h3>Event Bus</h3><p class="desc">In-process, bounded queues, monotonic seq — dashboard replay-safe.</p></div>
+            <div class="card"><h3><span class="ic">📋</span> Spec Store</h3><p class="desc">Job spec frozen & hashed (<span class="key">spec_hash</span>) — every call quotes the identical job.</p></div>
+            <div class="card"><h3><span class="ic">🧭</span> Segment Classifier</h3><p class="desc">Places signals → segment + confidence; mid-call reclassification.</p></div>
+            <div class="card"><h3><span class="ic">⚖️</span> Leverage Engine</h3><p class="desc">4-level config merge → ranked levers; harmful levers hard-excluded.</p></div>
+            <div class="card"><h3><span class="ic">🚩</span> Red-Flag / Ranking</h3><p class="desc">Per-segment benchmarks; −30% rule; price · completeness · risk · reputation.</p></div>
+            <div class="card"><h3><span class="ic">🛡️</span> Budget Guard</h3><p class="desc">Per-category ceilings → escalate pressure or Pull Me In.</p></div>
+            <div class="card"><h3><span class="ic">📡</span> Event Bus</h3><p class="desc">In-process, bounded queues, monotonic seq — dashboard replay-safe.</p></div>
           </div>
         </div>
 
-        <div class="conn">reads config at campaign start · hot-reloadable</div>
+        <div class="thread"><span class="lbl">reads config at campaign start · hot-reloadable</span></div>
 
         <div class="grid c2">
-          <div class="layer">
-            <div class="layer-h"><h2>Config layer</h2><span class="layer-tag">YAML</span></div>
-            <p class="desc" style="margin-top:0">Strategy lives in files, not code. Priority: <b>event → category → segment → region</b>; harmful levers are never overridden downward.</p>
+          <div class="tier">
+            <div class="tier-h"><span class="tier-name"><span class="ic">🗂️</span>Config layer</span><span class="tier-tag">YAML</span></div>
+            <p class="desc" style="margin-top:0">Strategy lives in files, not code. Priority <b>event → category → segment → region</b>; harmful levers never overridden downward.</p>
             <div class="grid c4" style="margin-top:14px">
               <div class="stat"><div class="n">3</div><div class="l">events</div></div>
               <div class="stat"><div class="n">7</div><div class="l">categories</div></div>
@@ -192,17 +231,11 @@
               <div class="stat"><div class="n">multi</div><div class="l">regions</div></div>
             </div>
           </div>
-          <div class="layer">
-            <div class="layer-h"><h2>Persistence</h2><span class="layer-tag">SQLite · SQLAlchemy 2.0</span></div>
-            <p class="desc" style="margin-top:0">Campaigns, calls, quotes, price events, red flags — and segment observations, so per-lever effectiveness is <b>learned</b>.</p>
+          <div class="tier">
+            <div class="tier-h"><span class="tier-name"><span class="ic">🗃️</span>Persistence</span><span class="tier-tag">SQLite · SQLAlchemy 2.0</span></div>
+            <p class="desc" style="margin-top:0">Campaigns, calls, quotes, price events, red flags — plus segment observations, so per-lever effectiveness is <b>learned</b>.</p>
             <div class="row" style="margin-top:14px"><span class="chip">no Redis</span><span class="chip">no Postgres</span><span class="chip good">zero infra</span></div>
           </div>
-        </div>
-
-        <div class="grid c3" style="margin-top:14px">
-          <div class="card tight"><h3>Single Docker service</h3><p class="desc">Render blueprint · FastAPI serves the built SPA — same origin, no CORS.</p></div>
-          <div class="card tight"><h3>Simulation ⇄ Live</h3><p class="desc">Same event contract — real calls light up the identical UI.</p></div>
-          <div class="card tight"><h3>Determinism where it counts</h3><p class="desc">Math & rules in engines; the model negotiates, never computes.</p></div>
         </div>
       </div>
     </section>
@@ -211,46 +244,50 @@
     <section class="slide" id="s2" data-title="Voice fleet">
       <div class="inner">
         <div class="eyebrow">02 · Voice fleet & telephony</div>
-        <h1>Eight ElevenLabs agents, one Twilio number, four languages</h1>
+        <h1>Eight ElevenLabs agents, one Twilio number</h1>
         <p class="sub">The Caller runs a phased platform workflow with a guaranteed red-flag tool node. Counterparties are a reproducible practice market — each style a distinct agent with its own concession mechanics.</p>
 
-        <div class="grid c2">
-          <div class="layer">
-            <div class="layer-h"><h2>Outbound — the Caller</h2><span class="layer-tag">01 · Caller / Negotiator · gpt-4o · t 0.4</span></div>
-            <p class="desc" style="margin-top:0">Opens with the AI-disclosure consent line, itemizes, then negotiates: <b>minimum two levers</b> before any price is accepted; competing bids only from <span class="key">get_verified_leverage</span>. <span class="key">end_call</span> is gated until deposit, refundability & validity are pinned.</p>
-            <div class="stack" style="margin-top:14px">
-              <div class="step"><div class="step-n">1</div><div><h3>Disclose + Itemize</h3><p class="desc" style="margin-top:2px">Consent line → opening price → fee-by-fee itemization.</p></div></div>
-              <div class="step"><div class="step-n">2</div><div><h3>Negotiate</h3><p class="desc" style="margin-top:2px">Flinch → counter-anchor −15% → a lever per turn → record moves.</p></div></div>
-              <div class="step"><div class="step-n">3</div><div><h3>Red-flag check <span class="chip brand" style="margin-left:4px">platform tool node</span></h3><p class="desc" style="margin-top:2px">A guaranteed call — not a model choice.</p></div></div>
-              <div class="step"><div class="step-n">4</div><div><h3>Close</h3><p class="desc" style="margin-top:2px">Deposit % · refundable-until · validity → structured outcome.</p></div></div>
+        <div class="fleet">
+          <div class="fleet-col">
+            <div class="lab">Orchestrated by SayWhen</div>
+            <div class="tokens">
+              <span class="token"><span class="num">01</span> Caller / Negotiator</span>
+              <span class="token"><span class="num">02</span> Intake / Estimator</span>
+              <span class="token"><span class="num">03</span> Reception</span>
             </div>
-            <div class="row" style="margin-top:14px"><span class="small" style="width:100%">LLM edge conditions between phases</span>
-              <span class="chip">barge-in</span><span class="chip">voicemail detection</span><span class="chip">skip turn</span><span class="chip">language detection</span></div>
           </div>
-
-          <div class="stack">
-            <div class="layer">
-              <div class="layer-h"><h2>Telephony path</h2><span class="layer-tag">Twilio → ElevenLabs</span></div>
-              <p class="desc" style="margin-top:0">A Twilio number imported into ElevenLabs. <span class="key">POST /convai/twilio/outbound-call</span> with per-call dynamic variables (<span class="key">campaign_id</span>, <span class="key">call_id</span>, vendor, spec summary). Init is variable-independent — validated by a zero-variable simulation. Inbound routes to a dedicated Reception agent (callbacks can't carry campaign variables).</p>
-              <div class="row" style="margin-top:12px"><span class="chip brand">outbound · Caller</span><span class="chip">inbound · 03 Reception</span></div>
-              <p class="small" style="margin-top:10px">post-call webhook → transcript replayed onto the event bus</p>
-            </div>
-            <div class="layer" style="margin-top:14px">
-              <div class="layer-h"><h2>Intake</h2><span class="layer-tag">02 · Intake / Estimator · WebRTC</span></div>
-              <p class="desc" style="margin-top:0">Voice interview → <span class="key">save_spec_field</span> per answer → full read-back → <span class="key">finalize_spec</span> freezes the hash. Same schema as document intake — the two paths are indistinguishable to the Caller.</p>
+          <div class="fleet-col">
+            <div class="lab">Practice market · 5 counterparty styles</div>
+            <div class="tokens">
+              <span class="token"><span class="dotc" style="background:#5a6b8c"></span>Stonewaller</span>
+              <span class="token"><span class="dotc" style="background:#d0435a"></span>Hard</span>
+              <span class="token"><span class="dotc" style="background:#7c5cff"></span>Upseller</span>
+              <span class="token"><span class="dotc" style="background:#e0913a"></span>Lowballer</span>
+              <span class="token"><span class="dotc" style="background:#2fb37a"></span>Flexible</span>
             </div>
           </div>
         </div>
 
-        <h2 style="margin:22px 0 4px">Practice market — five counterparty styles</h2>
-        <div class="grid c5">
-          <div class="card tight"><div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><span class="badge" style="background:#5a6b8c">S</span><h3>Stonewaller</h3></div><p class="desc" style="margin:0">"We don't quote by phone." Cracks only when the ask narrows — weekday, daytime, a rough range.</p></div>
-          <div class="card tight"><div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><span class="badge" style="background:#d0435a">H</span><h3>Hard</h3></div><p class="desc" style="margin:0">Firm full-service caterer; 10% service charge revealed only if asked. Concedes a slice per genuine lever.</p></div>
-          <div class="card tight"><div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><span class="badge" style="background:#7c5cff">U</span><h3>Upseller</h3></div><p class="desc" style="margin:0">Pitches premium; a tier-downgrade converts the upsell energy into a base-package discount.</p></div>
-          <div class="card tight"><div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><span class="badge" style="background:#e0913a">L</span><h3>Lowballer</h3></div><p class="desc" style="margin:0">Below-market sticker + hidden delivery/setup/service fees — bait for the −30% red flag.</p></div>
-          <div class="card tight"><div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><span class="badge" style="background:#2fb37a">F</span><h3>Flexible</h3></div><p class="desc" style="margin:0">Reveals "it's just me" mid-call → rewards a reclassify + relationship pivot with its best price.</p></div>
+        <h2 style="margin:22px 0 8px">The Caller — a four-phase platform workflow <span class="tier-tag">gpt-4o · t 0.4</span></h2>
+        <div class="pipe">
+          <div class="pstep"><div class="pnum">1</div><h3>Disclose + Itemize</h3><p class="desc">AI-disclosure consent line → opening price → fee-by-fee itemization.</p></div>
+          <div class="parrow">→</div>
+          <div class="pstep"><div class="pnum">2</div><h3>Negotiate</h3><p class="desc">Flinch → counter-anchor −15% → a lever per turn → record moves. Min. two levers before any price.</p></div>
+          <div class="parrow">→</div>
+          <div class="pstep glow"><div class="pnum">3</div><h3>Red-flag check <span class="chip brand">tool node</span></h3><p class="desc">A <b>guaranteed</b> platform call — not a model choice.</p></div>
+          <div class="parrow">→</div>
+          <div class="pstep"><div class="pnum">4</div><h3>Close</h3><p class="desc">Deposit % · refundable-until · validity → structured outcome. <span class="key">end_call</span> gated on all three.</p></div>
         </div>
-        <p class="small" style="margin-top:14px"><b>Languages</b> — en base + de / it / ru · per-language presets: flash v2.5 TTS override + translated openers · auto language detection mid-call.</p>
+        <div class="row" style="margin-top:10px"><span class="small" style="margin-right:2px">LLM edge conditions:</span>
+          <span class="chip">barge-in</span><span class="chip">voicemail detection</span><span class="chip">skip turn</span><span class="chip">language detection</span></div>
+
+        <div class="grid c2" style="margin-top:16px">
+          <div class="card"><h3><span class="ic">☎️</span> Telephony path <span class="tier-tag">Twilio → ElevenLabs</span></h3>
+            <p class="desc">A Twilio number imported into ElevenLabs. <span class="key">POST /convai/twilio/outbound-call</span> carries per-call dynamic variables (<span class="key">campaign_id</span>, <span class="key">call_id</span>, vendor, spec summary). Init is variable-independent — proven by a zero-variable simulation. Inbound routes to the Reception agent (callbacks can't carry campaign variables). Post-call webhook → transcript replayed onto the event bus.</p></div>
+          <div class="card"><h3><span class="ic">🎧</span> Intake <span class="tier-tag">02 · WebRTC</span></h3>
+            <p class="desc">Voice interview → <span class="key">save_spec_field</span> per answer → full read-back → <span class="key">finalize_spec</span> freezes the hash. Same schema as document intake — the two paths are indistinguishable to the Caller.</p>
+            <p class="desc"><b>Languages</b> — en base + de / it / ru · per-language flash-v2.5 TTS + translated openers · auto detection mid-call.</p></div>
+        </div>
       </div>
     </section>
 
@@ -258,40 +295,45 @@
     <section class="slide" id="s3" data-title="Deal-state pipeline">
       <div class="inner">
         <div class="eyebrow">03 · Live deal-state pipeline & honesty layer</div>
-        <h1>Deal state rides typed tools — the dashboard never parses audio</h1>
-        <p class="sub">Mid-call, the agent writes structured events to the backend; the server validates, persists and fans out. The same contract powers simulation and live calls, so one UI renders both.</p>
+        <h1>Deal state rides typed tools — never parsed audio</h1>
+        <p class="sub">Mid-call the agent writes structured events to the backend; the server validates, persists and fans out. One contract powers simulation and live calls, so a single UI renders both.</p>
 
-        <div class="grid c3">
-          <div class="card tight"><h3>get_verified_leverage <span class="chip good" style="margin-left:4px">READ</span></h3><p class="desc">The only legal source of competing numbers; the server fills amounts from verified quotes; harmful levers stripped per segment.</p></div>
-          <div class="card tight"><h3>log_quote <span class="chip warn" style="margin-left:4px">WRITE</span></h3><p class="desc">Full itemized quote each time; <span class="key">disclosed_voluntarily:false</span> marks fees admitted only when asked.</p></div>
-          <div class="card tight"><h3>record_price_move <span class="chip warn" style="margin-left:4px">WRITE</span></h3><p class="desc">from → to + one attributed lever; zero-delta moves rejected server-side.</p></div>
-          <div class="card tight"><h3>check_red_flags</h3><p class="desc">−30% below segment median · undisclosed charge · deposit &gt; 50% · incomplete itemization.</p></div>
-          <div class="card tight"><h3>reclassify_segment</h3><p class="desc">Vendor is a different business than assumed → new lever set, strategy pivots live.</p></div>
-          <div class="card tight"><h3>request_human</h3><p class="desc">"Pull Me In" — long-poll until the client approves a higher ceiling or holds budget.</p></div>
+        <div class="flow">
+          <div class="fnode"><div class="ft">🗣️ Caller</div><div class="fd">mid-call</div></div>
+          <div class="fedge"></div>
+          <div class="fnode accent"><div class="ft">6 typed tools</div><div class="fd">read / write</div></div>
+          <div class="fedge"></div>
+          <div class="fnode"><div class="ft">/agent-tools</div><div class="fd">validate · persist</div></div>
+          <div class="fedge"></div>
+          <div class="fnode"><div class="ft">📡 Event bus</div><div class="fd">seq · fan-out</div></div>
+          <div class="fedge"></div>
+          <div class="fnode"><div class="ft">WebSocket</div><div class="fd">replay-safe</div></div>
+          <div class="fedge"></div>
+          <div class="fnode accent"><div class="ft">📊 Dashboard</div><div class="fd">ticker jumps</div></div>
         </div>
 
-        <div class="conn">HTTPS · workspace-secret auth · /api/agent-tools/*</div>
+        <div class="grid c3" style="margin-top:16px">
+          <div class="card"><h3>get_verified_leverage <span class="chip good">READ</span></h3><p class="desc">The only legal source of competing numbers; the server fills amounts from verified quotes; harmful levers stripped per segment.</p></div>
+          <div class="card"><h3>log_quote <span class="chip warn">WRITE</span></h3><p class="desc">Full itemized quote each time; <span class="key">disclosed_voluntarily:false</span> marks fees admitted only when asked.</p></div>
+          <div class="card"><h3>record_price_move <span class="chip warn">WRITE</span></h3><p class="desc">from → to + one attributed lever; zero-delta moves rejected server-side.</p></div>
+          <div class="card"><h3>check_red_flags</h3><p class="desc">−30% below segment median · undisclosed charge · deposit &gt; 50% · incomplete itemization.</p></div>
+          <div class="card"><h3>reclassify_segment</h3><p class="desc">Vendor is a different business than assumed → new lever set, strategy pivots live.</p></div>
+          <div class="card"><h3>request_human</h3><p class="desc">"Pull Me In" — long-poll until the client approves a higher ceiling or holds budget.</p></div>
+        </div>
 
-        <div class="grid c2">
-          <div class="layer">
-            <div class="layer-h"><h2>Server: validate → persist → publish</h2></div>
-            <p class="desc" style="margin-top:0"><span class="key">campaign_id</span> must exist and own the call; lever keys are checked against what leverage returned; then <span class="key">bus.publish</span> → WebSocket → the ticker jumps. Segment observations accumulate per-lever effectiveness — the config learns.</p>
-          </div>
-          <div class="layer">
-            <div class="layer-h"><h2>Honesty, enforced structurally</h2></div>
+        <div class="grid c2" style="margin-top:14px">
+          <div class="tier"><div class="tier-h"><span class="tier-name"><span class="ic">🔒</span>Honesty, enforced structurally</span></div>
             <p class="desc" style="margin-top:0">No competing bid exists unless a verified quote row backs it — the tool simply returns none, so the model has nothing to bluff with. AI disclosure is the hardcoded first message in all four languages.</p>
             <div class="row" style="margin-top:12px"><span class="chip good">no invented bids</span><span class="chip good">attributed price moves</span><span class="chip good">structured outcomes only</span></div>
           </div>
+          <div class="tier"><div class="tier-h"><span class="tier-name"><span class="ic">🔌</span>Peripheral integrations</span></div>
+            <p class="desc" style="margin-top:0">Google Places v1 — live discovery, place cards, photo proxy (key never reaches the browser). Anthropic — document intake & richer counterparty dialogue. Preflight <span class="key">/system-check</span> probes every connector for real.</p>
+            <div class="row" style="margin-top:12px"><span class="chip brand">ElevenLabs</span><span class="chip">Twilio</span><span class="chip">Google Places</span><span class="chip">Anthropic</span><span class="chip">Render</span></div>
+          </div>
         </div>
 
-        <div class="layer" style="margin-top:14px">
-          <div class="layer-h"><h2>Peripheral integrations</h2></div>
-          <p class="desc" style="margin-top:0">Google Places v1 — live vendor discovery, place cards, photo proxy (the key never reaches the browser). Anthropic — document intake & richer counterparty dialogue. A preflight <span class="key">/system-check</span> probes every connector for real before a demo.</p>
-          <div class="row" style="margin-top:12px"><span class="chip brand">ElevenLabs</span><span class="chip">Twilio</span><span class="chip">Google Places</span><span class="chip">Anthropic API</span><span class="chip">Render deploy</span></div>
-        </div>
-
-        <div class="grid c3" style="margin-top:18px">
-          <div class="stat"><div class="n">1</div><div class="l">event contract — quote.new · price.move · segment.reclassified · handoff.requested · call.ended</div></div>
+        <div class="grid c3" style="margin-top:16px">
+          <div class="stat"><div class="n">1</div><div class="l">event contract — quote.new · price.move · segment.reclassified · handoff · call.ended</div></div>
           <div class="stat"><div class="n">2</div><div class="l">call modes — deterministic simulation ⇄ live ElevenLabs, same bus, same UI</div></div>
           <div class="stat"><div class="n">0</div><div class="l">parsed transcripts — deal state is typed tool calls; the webhook is the record, not the signal</div></div>
         </div>
@@ -309,6 +351,7 @@
     const slides = [...document.querySelectorAll('.slide')];
     const dotsEl = document.getElementById('dots');
     const counter = document.getElementById('counter');
+    const progress = document.getElementById('progress');
     const prev = document.getElementById('prev'), next = document.getElementById('next');
     let cur = 0;
 
@@ -320,11 +363,12 @@
       dotsEl.appendChild(b);
     });
     const dots = [...dotsEl.children];
+    const pad = (n) => String(n).padStart(2, '0');
 
-    function pad(n){ return String(n).padStart(2, '0'); }
     function paint(){
       dots.forEach((d, i) => d.classList.toggle('on', i === cur));
       counter.textContent = pad(cur + 1) + ' / ' + pad(slides.length);
+      progress.style.width = ((cur) / (slides.length - 1) * 100) + '%';
       prev.disabled = cur === 0; next.disabled = cur === slides.length - 1;
     }
     function go(i){
@@ -333,11 +377,23 @@
       paint();
     }
 
-    // keep `cur` in sync with manual scroll
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting){ cur = slides.indexOf(e.target); paint(); } });
-    }, { threshold: 0.55 });
-    slides.forEach(s => io.observe(s));
+    // Reveal any slide that scrolls into view, and track the one nearest viewport
+    // center as active. Scroll-based (not a 0.5 IntersectionObserver) so slides taller
+    // than the viewport still reveal and still register as current.
+    function onScroll(){
+      const vh = window.innerHeight;
+      let best = 0, bestDist = Infinity;
+      slides.forEach((s, i) => {
+        const r = s.getBoundingClientRect();
+        if (r.top < vh * 0.85 && r.bottom > vh * 0.15) s.classList.add('in');
+        const dist = Math.abs(r.top + r.height / 2 - vh / 2);
+        if (dist < bestDist){ bestDist = dist; best = i; }
+      });
+      if (best !== cur){ cur = best; paint(); }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    onScroll();
 
     prev.addEventListener('click', () => go(cur - 1));
     next.addEventListener('click', () => go(cur + 1));

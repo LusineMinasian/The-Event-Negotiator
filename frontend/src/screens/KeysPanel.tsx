@@ -11,8 +11,8 @@ type Field = {
 // group keys by provider for a tidy, scannable form
 const GROUPS: { title: string; hint: string; match: (k: string) => boolean }[] = [
   { title: "ElevenLabs", hint: "Voice agents — the calling & intake brains.", match: (k) => k.startsWith("elevenlabs") },
-  { title: "Demo call", hint: "In Live mode the agent rings only this one number — you play a vendor — while every other call stays simulated.", match: (k) => k.startsWith("simulation") },
-  { title: "Twilio", hint: "Telephony to dial real vendors (not needed for the demo call).", match: (k) => k.startsWith("twilio") },
+  { title: "Demo call", hint: "In Live mode the agent rings this one number — you play a vendor — while every other call stays simulated. Add the public URL + Twilio below to also get the transcript live DURING the call.", match: (k) => k.startsWith("simulation") || k.startsWith("public") },
+  { title: "Twilio", hint: "Telephony to dial real vendors, and required for the real-time (during-call) transcript bridge.", match: (k) => k.startsWith("twilio") },
   { title: "Google Places", hint: "Real vendor discovery (falls back to the seeded market).", match: (k) => k.startsWith("google") },
   { title: "Anthropic", hint: "Nicer document reading & counterparty dialogue.", match: (k) => k.startsWith("anthropic") },
 ];
@@ -38,7 +38,7 @@ function parseKeyFile(text: string): Record<string, string> {
 // user paste/clear per-provider keys and flip call mode, saves to their account.
 // Used both on the standalone Settings page and in the Overview right column.
 export default function KeysPanel() {
-  const [data, setData] = useState<{ fields: Field[]; call_mode: string; live_calls_available: boolean; demo_call_available?: boolean } | null>(null);
+  const [data, setData] = useState<{ fields: Field[]; call_mode: string; live_calls_available: boolean; demo_call_available?: boolean; bridge_call_available?: boolean } | null>(null);
   const [vals, setVals] = useState<Record<string, string>>({});   // only edited fields
   const [mode, setMode] = useState<string>("simulation");
   const [busy, setBusy] = useState(true);
@@ -183,6 +183,9 @@ export default function KeysPanel() {
             ))}
           </div>
         </div>
+      )}
+      {data?.bridge_call_available && (
+        <div className="small" style={{ color: "var(--good)", marginBottom: 6 }}>⚡ Real-time transcript ON — streams live during the call.</div>
       )}
 
       {busy && !data && <div className="loading-wrap" style={{ minHeight: 120 }}><Spinner size={24} /></div>}

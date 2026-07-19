@@ -23,7 +23,7 @@ from ..db import SessionLocal
 from ..engines import budget_guard, leverage, ranking, red_flag, segment_classifier
 from ..models import (Call, Campaign, Handoff, PriceEvent, Quote, RedFlag, SegmentObservation,
                       Spec, Utterance, Vendor)
-from . import elevenlabs_connector
+from . import elevenlabs_connector, twilio_connector
 from .counterparty import Counterparty
 from .event_bus import bus
 
@@ -83,6 +83,39 @@ def _order_vendors(vendors: list[Vendor]) -> list[Vendor]:
     return sorted(vendors, key=key)
 
 
+def _pick_demo_vendors(ordered: list[Vendor], n: int = 3) -> list[Vendor]:
+    """Pick up to n vendors of DISTINCT counterparty styles (and distinct categories
+    where possible) so the live demo rings your phone as genuinely different negotiation
+    styles — warm / hard / upseller etc. — one after another."""
+    store = get_store()
+
+    def style_of(v: Vendor) -> str:
+        return (store.segment(v.segment_key).get("counterparty") or {}).get("style", "warm")
+
+    picked: list[Vendor] = []
+    seen_styles: set[str] = set()
+    seen_cats: set[str] = set()
+    # pass 1: distinct style AND category (most varied on screen)
+    for v in ordered:
+        s = style_of(v)
+        if s in seen_styles or v.category in seen_cats:
+            continue
+        picked.append(v); seen_styles.add(s); seen_cats.add(v.category)
+        if len(picked) >= n:
+            return picked
+    # pass 2: fill remaining slots by distinct style only
+    for v in ordered:
+        if v in picked:
+            continue
+        s = style_of(v)
+        if s in seen_styles:
+            continue
+        picked.append(v); seen_styles.add(s)
+        if len(picked) >= n:
+            break
+    return picked
+
+
 async def run_campaign(campaign_id: str) -> None:
     """Public entrypoint (fire-and-forget task). Wraps the orchestration so a crash marks
     the campaign 'failed' instead of leaving it stuck 'running' (which the 409 guard would
@@ -140,9 +173,13 @@ async def _run_campaign(campaign_id: str) -> None:
 
     sem = asyncio.Semaphore(6)
 
-    # in demo mode exactly one call rings your phone — the first vendor in the order
-    demo_vendor_id = ordered[0].id if (ordered and settings.call_mode == "live"
-                                       and settings.demo_call_available) else None
+    # Live demo: up to three vendors of DISTINCT styles ring your phone. One person on
+    # one phone can only take them one at a time, so these run strictly sequentially;
+    # every other vendor stays fully simulated in parallel.
+    demo_vendors = (_pick_demo_vendors(ordered)
+                    if (ordered and settings.call_mode == "live"
+                        and (settings.demo_call_available or settings.bridge_call_available)) else [])
+    demo_ids = {v.id for v in demo_vendors}
 
     async def guarded(v: Vendor):
         async with sem:
@@ -150,15 +187,29 @@ async def _run_campaign(campaign_id: str) -> None:
                 return
             await asyncio.sleep(0.2)
             await run_single_call(campaign_id, v.id, payload, event_key, region_key, verified,
-                                  state, is_demo=(v.id == demo_vendor_id))
+                                  state, is_demo=False)
 
-    # stagger starts slightly for a lively ticker
+    # stagger the simulated calls slightly for a lively ticker
     tasks = []
-    for i, v in enumerate(ordered):
+    for v in ordered:
+        if v.id in demo_ids:      # demo calls are driven sequentially below
+            continue
         if is_stopped(campaign_id):
             break
         tasks.append(asyncio.create_task(guarded(v)))
         await asyncio.sleep(0.25)
+
+    # the live demo calls share ONE phone → dial them one after another, each awaited to
+    # completion (the live poll keeps the call alive until it truly ends) before the next.
+    async def run_demo_sequential():
+        for v in demo_vendors:
+            if is_stopped(campaign_id):
+                break
+            await run_single_call(campaign_id, v.id, payload, event_key, region_key, verified,
+                                  state, is_demo=True)
+    if demo_vendors:
+        tasks.append(asyncio.create_task(run_demo_sequential()))
+
     await asyncio.gather(*tasks)
 
     if is_stopped(campaign_id):
@@ -221,20 +272,28 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
         # so the demo never stalls.
         if settings.call_mode == "live":
             demo_num = (settings.simulation_phone_number or "").strip()
-            conv = None
+            currency = payload.get("budget", {}).get("currency", "USD")
+            # which number does THIS call dial? (demo → your number for the one demo call;
+            # otherwise the real vendor). None → this call stays simulated.
+            live_num = None
             if demo_num:
-                # Hybrid demo: only the one designated call goes live — to YOUR number,
-                # you play this vendor. Every other call stays fully simulated.
-                if is_demo and settings.demo_call_available:
-                    conv = await _dispatch_live(db, campaign_id, call, vendor, payload, resolved,
-                                                region_key, to_number=demo_num)
-            elif settings.live_calls_available:
-                conv = await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key)
-            if conv is not None:  # dispatched (conv="" if no id) — don't fall back to simulation
-                if conv:
-                    await _poll_live_transcript(db, campaign_id, call, conv,
-                                                payload.get("budget", {}).get("currency", "USD"))
-                return
+                if is_demo and (settings.demo_call_available or settings.bridge_call_available):
+                    live_num = demo_num
+            elif settings.live_calls_available or settings.bridge_call_available:
+                live_num = vendor.phone_e164
+            if live_num:
+                # prefer the real-time media bridge (transcript streams DURING the call);
+                # else native ElevenLabs outbound (transcript polled, arrives near the end).
+                if settings.bridge_call_available:
+                    if await _dispatch_bridged(db, campaign_id, call, vendor, payload, resolved,
+                                               region_key, live_num, currency, event_key=event_key):
+                        return
+                conv = await _dispatch_live(db, campaign_id, call, vendor, payload, resolved,
+                                            region_key, event_key=event_key, to_number=(demo_num or None))
+                if conv is not None:  # dispatched (conv="" if no id) — don't simulate
+                    if conv:
+                        await _poll_live_transcript(db, campaign_id, call, conv, currency)
+                    return
 
         region = store.region(region_key)
         consent = store.prompts.get("consent_scripts", {}).get(region.get("consent_script_key", "consent_us"), "")
@@ -399,8 +458,37 @@ async def _maybe_handoff(db, campaign_id, call, vendor, cp, payload, state, ts):
         await _say(db, campaign_id, call, "system", "No pickup — capping at budget and continuing.", ts + 2)
 
 
+def _live_dynamic_vars(payload: dict, event_key: str, category: str,
+                       segment_key: str, region_key: str) -> dict:
+    """Full prompt context for the live ElevenLabs Caller Agent so it negotiates in THIS
+    vendor's style: the agent prompt consumes {{levers_block}}/{{harmful_block}}/
+    {{consent_line}} etc. Without these it would open the same way on every call — which
+    is exactly what breaks the 'three distinct styles' demo."""
+    store = get_store()
+    vl = leverage.get_verified_leverage(event_key, category, segment_key, payload, region_key, [], 0)
+    levers = sorted(vl.get("levers", []), key=lambda l: l.get("weight", 0), reverse=True)
+    lever_lines = [f'{i + 1}. {l["display"]} — "{l["phrase"]}"'
+                   for i, l in enumerate(levers) if "{amount}" not in (l.get("phrase") or "")]
+    harmful_lines = [f'- {h["key"]}: {h["reason"]}' for h in vl.get("harmful_topics", [])]
+    region = store.region(region_key)
+    consent = store.prompts.get("consent_scripts", {}).get(region.get("consent_script_key", "consent_us"), "")
+    ctx = {
+        "spec_summary": spec_summary(payload),
+        "segment_display": store.segment(segment_key).get("display_name", ""),
+        "bottleneck": "",
+        "concession_ceiling": vl.get("concession_ceiling", 0.12),
+        "consent_line": consent,
+        "levers_block": "\n".join(lever_lines) or "No special levers — just get a clear, itemized quote.",
+        "harmful_block": "\n".join(harmful_lines) or "None.",
+        "objectives_block": "\n".join(f"- {o}" for o in vl.get("objectives", [])),
+        "expected_line_items": ", ".join(vl.get("expected_line_items", [])),
+    }
+    return elevenlabs_connector.build_dynamic_variables(ctx)
+
+
 async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, payload: dict,
-                         resolved: dict, region_key: str, to_number: str | None = None):
+                         resolved: dict, region_key: str, event_key: str = "",
+                         to_number: str | None = None):
     """Place a real outbound call through the ElevenLabs Caller Agent. Tags the call
     with campaign_id + call_id as dynamic variables so the transcript can route back to
     this campaign. Returns the conversation_id (str, may be "") on success so the caller
@@ -419,8 +507,13 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
         "vendor_name": vendor.name,
         "category": vendor.category,
         "segment_key": call.segment_key_at_start,
-        "spec_summary": spec_summary(payload),
-        "segment_display": store.segment(call.segment_key_at_start).get("display_name", ""),
+        # style-aware levers/consent so the agent adapts per counterparty (falls back to
+        # the minimal set if the event key is unknown)
+        **(_live_dynamic_vars(payload, event_key, vendor.category, call.segment_key_at_start, region_key)
+           if event_key else {
+               "spec_summary": spec_summary(payload),
+               "segment_display": store.segment(call.segment_key_at_start).get("display_name", ""),
+           }),
     }
     try:
         result = await elevenlabs_connector.initiate_outbound_call(
@@ -443,8 +536,10 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
     call.phase = "dialing"
     db.commit()
     if to_number:
+        style = (store.segment(call.segment_key_at_start).get("counterparty") or {}).get("style", "warm")
         await _say(db, campaign_id, call, "system",
-                   f"Demo call — the agent is ringing your phone ({to}). Answer as {vendor.name}.", 0)
+                   f"Demo call — the agent is ringing your phone ({to}). Answer as {vendor.name} "
+                   f"({store.segment(call.segment_key_at_start).get('display_name', '')}) — play it {style}.", 0)
     await bus.publish(campaign_id, "call.live", {
         "call_id": call.id, "vendor_name": vendor.name,
         "conversation_id": call.twilio_sid, "to": to,
@@ -499,6 +594,116 @@ def _extract_price(text: str):
     return None
 
 
+async def record_live_utterance(db, campaign_id: str, call: Call, speaker: str, text: str,
+                                ts: int, pricing: dict) -> None:
+    """Save + broadcast one live line, and turn a spoken vendor price into quote/price
+    events. `pricing` = {"quote": Quote|None, "rate": float, "vendor": Vendor|None} and is
+    mutated across calls. Shared by the polling path and the real-time media bridge."""
+    text = (text or "").strip()
+    if not text:
+        return
+    u = Utterance(call_id=call.id, ts_s=ts, speaker=speaker, text=text, lever_key="")
+    db.add(u); db.commit()
+    await bus.publish(campaign_id, "utterance", {
+        "call_id": call.id, "speaker": speaker, "text": text, "ts_s": ts,
+        "lever_key": "", "utterance_id": u.id,
+    })
+    vendor = pricing.get("vendor")
+    if speaker != "vendor" or vendor is None:
+        return
+    local = _extract_price(text)
+    if not local:
+        return
+    usd = round(local / pricing.get("rate", 1.0), 2)
+    quote = pricing.get("quote")
+    if quote is None:
+        quote = Quote(call_id=call.id, campaign_id=campaign_id, vendor_id=vendor.id,
+                      category=call.category, segment_key=call.segment_key_at_start,
+                      currency="USD", line_items=[{"label": "Quoted total", "amount": usd}],
+                      opening_total=usd, total=usd, status="verified",
+                      negotiation={"opening_total": usd, "leverage_used": []})
+        db.add(quote); db.commit()
+        pricing["quote"] = quote
+        await bus.publish(campaign_id, "quote.new", _quote_event(quote, vendor))
+    elif round(usd) != round(quote.total):
+        from_total = quote.total
+        quote.total = usd; db.commit()
+        pe = PriceEvent(quote_id=quote.id, call_id=call.id, from_total=from_total, to_total=usd,
+                        trigger_utterance_id=u.id, leverage_type="live",
+                        segment_key=call.segment_key_at_start, ts_s=ts, attributed=True)
+        db.add(pe); db.commit()
+        await bus.publish(campaign_id, "price.move", {
+            "call_id": call.id, "vendor_name": vendor.name, "category": call.category,
+            "from_total": from_total, "to_total": usd, "leverage": "Live negotiation",
+            "delta_pct": round((usd - from_total) / from_total * 100, 1) if from_total else 0,
+        })
+        await bus.publish(campaign_id, "quote.update", _quote_event(quote, vendor))
+
+
+async def _dispatch_bridged(db, campaign_id: str, call: Call, vendor: Vendor, payload: dict,
+                            resolved: dict, region_key: str, to_number: str, currency: str,
+                            event_key: str = "") -> bool | None:
+    """Place the Twilio call ourselves with a media-stream that bridges to the ElevenLabs
+    agent — so transcript + prices stream live during the call. Blocks until the call ends
+    (the WS bridge marks it completed). Returns True if placed, or None to fall back."""
+    from . import media_bridge
+    if not settings.bridge_call_available or not media_bridge.AVAILABLE:
+        return None
+    import uuid
+    from ..routers import telephony
+    store = get_store()
+    base = settings.public_base_url.rstrip("/")
+    wss = base.replace("https://", "wss://").replace("http://", "ws://")
+    key = uuid.uuid4().hex
+    dv = {
+        "campaign_id": campaign_id, "call_id": call.id, "vendor_name": vendor.name,
+        "category": vendor.category, "segment_key": call.segment_key_at_start,
+        # style-aware levers/consent so the bridged agent negotiates in this vendor's style
+        **(_live_dynamic_vars(payload, event_key, vendor.category, call.segment_key_at_start, region_key)
+           if event_key else {
+               "spec_summary": spec_summary(payload),
+               "segment_display": store.segment(call.segment_key_at_start).get("display_name", ""),
+           }),
+        "_currency": currency,
+    }
+    telephony.register(key, {"campaign_id": campaign_id, "call_id": call.id, "dynamic_variables": dv})
+    stream_url = f"{wss}/api/telephony/stream/{key}"
+    consent = "Hi! This is an A I assistant calling on behalf of an event planner. The call may be recorded."
+    twiml = twilio_connector.build_stream_twiml(consent, stream_url, settings.elevenlabs_agent_id)
+    try:
+        result = await twilio_connector.place_call(to_number, twiml)
+    except Exception as exc:  # noqa: BLE001 — fall back to simulation on any dial error
+        detail = str(exc)
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            try: detail = f"{resp.status_code}: {resp.text}"
+            except Exception: pass
+        print(f"[bridge-dial] campaign={campaign_id} call={call.id} to={to_number} FAILED: {detail}", flush=True)
+        await _say(db, campaign_id, call, "system", f"Live-bridge dial failed — {detail[:140]} — using simulation.", 0)
+        return None
+    call.twilio_sid = result.get("sid", "")
+    call.phase = "dialing"
+    db.commit()
+    seg = store.segment(call.segment_key_at_start)
+    style = (seg.get("counterparty") or {}).get("style", "warm")
+    hint = f" Answer as {vendor.name} ({seg.get('display_name', '')}) — play it {style}." if settings.simulation_phone_number else ""
+    await _say(db, campaign_id, call, "system",
+               f"Live call — ringing {to_number}. Transcript streams here in real time.{hint}", 0)
+    await bus.publish(campaign_id, "call.live", {"call_id": call.id, "vendor_name": vendor.name,
+                                                 "conversation_id": call.twilio_sid, "to": to_number})
+    # keep this task alive until the bridge (WS handler) marks the call completed
+    for _ in range(400):  # ~10 min at 1.5s
+        if is_stopped(campaign_id):
+            break
+        await asyncio.sleep(1.5)
+        fresh = db.get(Call, call.id)
+        if fresh:
+            db.refresh(fresh)
+            if fresh.status == "completed":
+                break
+    return True
+
+
 async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_id: str,
                                 currency: str = "USD") -> None:
     """Stream a live ElevenLabs call into the dashboard in near-real-time: poll the
@@ -506,9 +711,7 @@ async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_i
     marks it done/failed (or a hard timeout). Keeps the call's task alive so the campaign
     doesn't finalize until the real call actually ends."""
     await _set_phase(db, campaign_id, call, "live")
-    vendor = db.get(Vendor, call.vendor_id)
-    rate = _FX.get(currency, 1.0)
-    quote: Quote | None = None
+    pricing = {"quote": None, "rate": _FX.get(currency, 1.0), "vendor": db.get(Vendor, call.vendor_id)}
     seen = 0
     ended_reason = ""
     for _ in range(280):  # safety cap ~7 min at 1.5s
@@ -528,39 +731,7 @@ async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_i
             if not text:
                 continue
             ts = int(turn.get("time_in_call_secs") or i * 4)
-            u = Utterance(call_id=call.id, ts_s=ts, speaker=speaker, text=text, lever_key="")
-            db.add(u); db.commit()
-            await bus.publish(campaign_id, "utterance", {
-                "call_id": call.id, "speaker": speaker, "text": text, "ts_s": ts,
-                "lever_key": "", "utterance_id": u.id,
-            })
-            # live pricing straight from what the vendor says — no reliance on the
-            # agent calling our tools. Store USD-base (÷ FX) so the dashboard converts back.
-            if speaker == "vendor" and vendor is not None:
-                local = _extract_price(text)
-                if local:
-                    usd = round(local / rate, 2)
-                    if quote is None:
-                        quote = Quote(call_id=call.id, campaign_id=campaign_id, vendor_id=vendor.id,
-                                      category=call.category, segment_key=call.segment_key_at_start,
-                                      currency="USD", line_items=[{"label": "Quoted total", "amount": usd}],
-                                      opening_total=usd, total=usd, status="verified",
-                                      negotiation={"opening_total": usd, "leverage_used": []})
-                        db.add(quote); db.commit()
-                        await bus.publish(campaign_id, "quote.new", _quote_event(quote, vendor))
-                    elif round(usd) != round(quote.total):
-                        from_total = quote.total
-                        quote.total = usd; db.commit()
-                        pe = PriceEvent(quote_id=quote.id, call_id=call.id, from_total=from_total,
-                                        to_total=usd, trigger_utterance_id=u.id, leverage_type="live",
-                                        segment_key=call.segment_key_at_start, ts_s=ts, attributed=True)
-                        db.add(pe); db.commit()
-                        await bus.publish(campaign_id, "price.move", {
-                            "call_id": call.id, "vendor_name": vendor.name, "category": call.category,
-                            "from_total": from_total, "to_total": usd, "leverage": "Live negotiation",
-                            "delta_pct": round((usd - from_total) / from_total * 100, 1) if from_total else 0,
-                        })
-                        await bus.publish(campaign_id, "quote.update", _quote_event(quote, vendor))
+            await record_live_utterance(db, campaign_id, call, speaker, text, ts, pricing)
         seen = len(turns)
         status = (data.get("status") or "").lower()
         ended_reason = (data.get("metadata") or {}).get("termination_reason") or ""

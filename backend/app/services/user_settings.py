@@ -20,6 +20,7 @@ FIELDS: list[tuple[str, str, bool]] = [
     ("elevenlabs_intake_agent_id", "ElevenLabs voice-intake agent ID", False),
     ("elevenlabs_phone_number_id", "ElevenLabs phone number ID", False),
     ("simulation_phone_number", "Your phone number (E.164, e.g. +37499…)", False),
+    ("public_base_url", "Public URL of this app (for real-time transcript, e.g. https://…)", False),
     ("twilio_account_sid", "Twilio Account SID", False),
     ("twilio_auth_token", "Twilio auth token", True),
     ("twilio_from_number", "Twilio from number", False),
@@ -73,4 +74,5 @@ def status(data: dict) -> dict:
         "call_mode": (data.get("call_mode") or _ENV_CALL_MODE),
         "live_calls_available": settings.live_calls_available,
         "demo_call_available": settings.demo_call_available,
+        "bridge_call_available": settings.bridge_call_available,
     }
