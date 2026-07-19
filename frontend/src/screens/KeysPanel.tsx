@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { Spinner } from "../ui";
 
@@ -10,21 +10,41 @@ type Field = {
 // group keys by provider for a tidy, scannable form
 const GROUPS: { title: string; hint: string; match: (k: string) => boolean }[] = [
   { title: "ElevenLabs", hint: "Voice agents — the calling & intake brains.", match: (k) => k.startsWith("elevenlabs") },
-  { title: "Twilio", hint: "Telephony that actually dials the vendors.", match: (k) => k.startsWith("twilio") },
+  { title: "Demo call", hint: "In Live mode the agent rings only this one number — you play a vendor — while every other call stays simulated.", match: (k) => k.startsWith("simulation") },
+  { title: "Twilio", hint: "Telephony to dial real vendors (not needed for the demo call).", match: (k) => k.startsWith("twilio") },
   { title: "Google Places", hint: "Real vendor discovery (falls back to the seeded market).", match: (k) => k.startsWith("google") },
   { title: "Anthropic", hint: "Nicer document reading & counterparty dialogue.", match: (k) => k.startsWith("anthropic") },
 ];
+
+// Parse a .env or CSV file into { ENV_NAME: value }. Handles `export K=V`,
+// `K=V`, `K,V`, quotes and comments.
+function parseKeyFile(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  text.split(/\r?\n/).forEach((raw) => {
+    let s = raw.trim();
+    if (!s || s.startsWith("#") || s.startsWith("//")) return;
+    s = s.replace(/^export\s+/i, "");
+    const m = s.match(/^([A-Za-z0-9_.\- ]+?)\s*[=,;\t]\s*(.*)$/);
+    if (!m) return;
+    let v = m[2].trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    out[m[1].trim().toUpperCase().replace(/[.\- ]/g, "_")] = v;
+  });
+  return out;
+}
 
 // Self-contained "bring your own keys" panel: reads the masked status, lets the
 // user paste/clear per-provider keys and flip call mode, saves to their account.
 // Used both on the standalone Settings page and in the Overview right column.
 export default function KeysPanel() {
-  const [data, setData] = useState<{ fields: Field[]; call_mode: string; live_calls_available: boolean } | null>(null);
+  const [data, setData] = useState<{ fields: Field[]; call_mode: string; live_calls_available: boolean; demo_call_available?: boolean } | null>(null);
   const [vals, setVals] = useState<Record<string, string>>({});   // only edited fields
   const [mode, setMode] = useState<string>("simulation");
   const [busy, setBusy] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     setBusy(true);
@@ -33,18 +53,34 @@ export default function KeysPanel() {
   useEffect(() => { load(); }, []);
 
   const dirty = useMemo(() => Object.keys(vals).length > 0 || (data && mode !== data.call_mode), [vals, mode, data]);
-  const setVal = (k: string, v: string) => { setSaved(false); setVals((s) => ({ ...s, [k]: v })); };
-  const clearVal = (k: string) => { setSaved(false); setVals((s) => ({ ...s, [k]: "" })); };
+  const setVal = (k: string, v: string) => { setSaved(false); setImportMsg(""); setVals((s) => ({ ...s, [k]: v })); };
+  const clearVal = (k: string) => { setSaved(false); setImportMsg(""); setVals((s) => ({ ...s, [k]: "" })); };
 
   const save = async () => {
     setSaving(true);
     try {
       const d = await api.saveSettingsKeys({ values: vals, call_mode: mode });
-      setData(d); setMode(d.call_mode); setVals({}); setSaved(true);
+      setData(d); setMode(d.call_mode); setVals({}); setSaved(true); setImportMsg("");
     } finally { setSaving(false); }
   };
 
+  // Import a .env / CSV: match ENV names to our fields and stage the values for review.
+  const onImport = async (file: File) => {
+    const parsed = parseKeyFile(await file.text());
+    const next: Record<string, string> = {};
+    (data?.fields || []).forEach((f) => {
+      const v = parsed[f.key.toUpperCase()];
+      if (v != null && v !== "") next[f.key] = v;
+    });
+    const n = Object.keys(next).length;
+    if (n === 0) { setImportMsg("No matching keys found in that file."); return; }
+    setSaved(false);
+    setVals((s) => ({ ...s, ...next }));
+    setImportMsg(`Imported ${n} key${n > 1 ? "s" : ""} — review and Save.`);
+  };
+
   const fields = data?.fields || [];
+  const canLive = !!(data?.live_calls_available || data?.demo_call_available);
 
   return (
     <div className="keys-panel">
@@ -53,20 +89,30 @@ export default function KeysPanel() {
           <h3 style={{ margin: 0 }}>Bring your own keys</h3>
           <div className="small">Stored on your account · applied to your calls, discovery & reading.</div>
         </div>
-        <button className="btn ghost sm" onClick={load} disabled={busy} aria-label="Reload">
-          {busy ? <Spinner size={13} /> : "↻"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input ref={fileRef} type="file" accept=".env,.csv,.txt,text/plain" style={{ display: "none" }}
+                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ""; }} />
+          <button className="btn ghost sm" onClick={() => fileRef.current?.click()} title="Import a .env or CSV file">⤵ Import</button>
+          <button className="btn ghost sm" onClick={load} disabled={busy} aria-label="Reload">
+            {busy ? <Spinner size={13} /> : "↻"}
+          </button>
+        </div>
       </div>
 
+      {importMsg && <div className="small keys-import-msg">{importMsg}</div>}
+
       {data && (
-        <div className={`keys-status ${data.live_calls_available ? "ok" : "sim"}`}>
+        <div className={`keys-status ${canLive ? "ok" : "sim"}`}>
           <span className="connector-dot" />
-          <span className="flex-1">{data.live_calls_available ? "Live calling ready" : "Simulation mode"}</span>
+          <span className="flex-1">
+            {data.demo_call_available && !data.live_calls_available ? "Demo call ready (one number)"
+              : canLive ? "Live calling ready" : "Simulation mode"}
+          </span>
           <div className="seg-toggle" role="group" aria-label="Call mode">
             {["simulation", "live"].map((m) => (
               <button key={m} className={mode === m ? "on" : ""} onClick={() => { setMode(m); setSaved(false); }}
-                      disabled={m === "live" && !data.live_calls_available}
-                      title={m === "live" && !data.live_calls_available ? "Add ElevenLabs + Twilio keys first" : ""}>
+                      disabled={m === "live" && !canLive}
+                      title={m === "live" && !canLive ? "Add ElevenLabs keys + your phone number (or full Twilio) first" : ""}>
                 {m === "simulation" ? "Sim" : "Live"}
               </button>
             ))}

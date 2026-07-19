@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     elevenlabs_agent_id: str = ""
     elevenlabs_intake_agent_id: str = ""  # conversational agent for the voice intake studio (falls back to agent_id)
     elevenlabs_phone_number_id: str = ""
+    simulation_phone_number: str = ""  # if set, Live mode dials only THIS number (you play a vendor); the rest simulate
     elevenlabs_webhook_secret: str = ""  # if set, the post-call webhook requires a matching x-webhook-secret header
     agent_tools_secret: str = ""  # if set, /api/agent-tools/* requires a matching Authorization header (the ElevenLabs workspace secret)
     public_base_url: str = ""
@@ -51,6 +52,17 @@ class Settings(BaseSettings):
             and self.twilio_account_sid
             and self.twilio_auth_token
             and self.twilio_from_number
+        )
+
+    @property
+    def demo_call_available(self) -> bool:
+        """A single real call to your own number (you play a vendor) via ElevenLabs
+        native outbound — no Twilio needed. Everything else stays simulated."""
+        return bool(
+            self.elevenlabs_api_key
+            and self.elevenlabs_agent_id
+            and self.elevenlabs_phone_number_id
+            and self.simulation_phone_number
         )
 
 

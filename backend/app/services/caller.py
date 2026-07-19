@@ -107,10 +107,15 @@ async def _run_campaign(campaign_id: str) -> None:
 
     sem = asyncio.Semaphore(6)
 
+    # in demo mode exactly one call rings your phone — the first vendor in the order
+    demo_vendor_id = ordered[0].id if (ordered and settings.call_mode == "live"
+                                       and settings.demo_call_available) else None
+
     async def guarded(v: Vendor):
         async with sem:
             await asyncio.sleep(0.2)
-            await run_single_call(campaign_id, v.id, payload, event_key, region_key, verified, state)
+            await run_single_call(campaign_id, v.id, payload, event_key, region_key, verified,
+                                  state, is_demo=(v.id == demo_vendor_id))
 
     # stagger starts slightly for a lively ticker
     tasks = []
@@ -143,7 +148,7 @@ async def _set_phase(db, campaign_id: str, call: Call, phase: str) -> None:
 
 async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
                           event_key: str, region_key: str, verified: list[dict],
-                          state: dict | None = None) -> None:
+                          state: dict | None = None, is_demo: bool = False) -> None:
     state = state if state is not None else {"handoff_done": False, "budget": payload.get("budget", {})}
     db = SessionLocal()
     try:
@@ -173,9 +178,18 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
         # success the live transcript arrives via the webhook and drives this call's
         # UI — so we stop here. Any failure falls through to the simulated choreography
         # so the demo never stalls.
-        if settings.call_mode == "live" and settings.live_calls_available:
-            if await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key):
-                return
+        if settings.call_mode == "live":
+            demo_num = (settings.simulation_phone_number or "").strip()
+            if demo_num:
+                # Hybrid demo: only the one designated call goes live — to YOUR number,
+                # you play this vendor. Every other call stays fully simulated.
+                if is_demo and settings.demo_call_available:
+                    if await _dispatch_live(db, campaign_id, call, vendor, payload, resolved,
+                                            region_key, to_number=demo_num):
+                        return
+            elif settings.live_calls_available:
+                if await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key):
+                    return
 
         region = store.region(region_key)
         consent = store.prompts.get("consent_scripts", {}).get(region.get("consent_script_key", "consent_us"), "")
@@ -341,12 +355,16 @@ async def _maybe_handoff(db, campaign_id, call, vendor, cp, payload, state, ts):
 
 
 async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, payload: dict,
-                         resolved: dict, region_key: str) -> bool:
+                         resolved: dict, region_key: str, to_number: str | None = None) -> bool:
     """Place a real outbound call through the ElevenLabs Caller Agent. Tags the call
     with campaign_id + call_id as dynamic variables so the post-call webhook can route
-    the transcript back to this campaign. Returns True if the live call was accepted."""
+    the transcript back to this campaign. Returns True if the live call was accepted.
+
+    `to_number` overrides the destination — used by the demo call so the agent rings
+    your own phone (you play this vendor) instead of dialing the real vendor."""
     store = get_store()
-    if not vendor.phone_e164:
+    to = (to_number or vendor.phone_e164 or "").strip()
+    if not to:
         return False
     phone_id = settings.elevenlabs_phone_number_id
     dynamic_variables = {
@@ -360,7 +378,7 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
     }
     try:
         result = await elevenlabs_connector.initiate_outbound_call(
-            phone_id, vendor.phone_e164, dynamic_variables)
+            phone_id, to, dynamic_variables)
     except Exception as exc:  # noqa: BLE001 — never let a live failure kill the campaign
         await bus.publish(campaign_id, "call.phase", {"call_id": call.id, "phase": "dialing"})
         await _say(db, campaign_id, call, "system",
@@ -369,9 +387,12 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
     call.twilio_sid = result.get("conversation_id", result.get("callSid", ""))
     call.phase = "dialing"
     db.commit()
+    if to_number:
+        await _say(db, campaign_id, call, "system",
+                   f"Demo call — the agent is ringing your phone ({to}). Answer as {vendor.name}.", 0)
     await bus.publish(campaign_id, "call.live", {
         "call_id": call.id, "vendor_name": vendor.name,
-        "conversation_id": call.twilio_sid, "to": vendor.phone_e164,
+        "conversation_id": call.twilio_sid, "to": to,
     })
     return True
 
