@@ -735,6 +735,10 @@
   .rev-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
   .rev-row:last-child { border-bottom: 0; }
   .rev-row span:first-child { color: var(--muted); }
+  .rev-caption { padding: 8px 0 4px; color: var(--muted); }
+  .rev-input { width: auto; max-width: 58%; text-align: right; padding: 6px 10px; border-radius: 9px; font-size: 14px; }
+  .rev-input[type="number"] { max-width: 92px; }
+  select.rev-input { text-align: left; }
 
   /* just the buttons — no full bar/strip */
   .wiz-footer { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-shrink: 0;

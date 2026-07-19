@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { applyTheme, clearTheme } from "../palette";
 import { useSpeechRecognition, useElevenLabsAgent } from "../speech";
 import {
-  detectColors, detectEventType, detectGuests, detectDate, detectVibeWords, extractKeywords,
+  detectColors, detectEventType, detectGuests, detectDate, detectBudget, detectVibeWords, extractKeywords,
   buildThemeTokens, readableText, imageColors,
 } from "../vibe";
 import { COUNTRIES, countryByCode, citiesFor, detectCountry, detectCityInText } from "../geo";
@@ -35,9 +35,6 @@ export default function CreateEvent() {
   const [type, setType] = useState("");
   const [country, setCountry] = useState(() => detectCountry());
   const [city, setCity] = useState("");
-  const [cityFocus, setCityFocus] = useState(false);
-  const [cityMenu, setCityMenu] = useState<{ top: number; left: number; width: number } | null>(null);
-  const [cityHi, setCityHi] = useState(0);
   const [guests, setGuests] = useState(50);
   const [date, setDate] = useState("");
   const [budget, setBudget] = useState(15000);
@@ -55,7 +52,6 @@ export default function CreateEvent() {
   const [docSummary, setDocSummary] = useState("");
 
   const bid = useRef(0);
-  const cityInputRef = useRef<HTMLInputElement>(null);
   const briefInput = useRef<HTMLInputElement>(null);
   const imageFiles = useRef<Record<string, File>>({});
   const pinUrls = useRef<string[]>([]);
@@ -74,22 +70,6 @@ export default function CreateEvent() {
     return () => clearTheme();
   }, []);
   useEffect(() => { const tk = buildThemeTokens(colors); if (tk) applyTheme(tk); else clearTheme(); }, [colors]);
-
-  // Anchor the city dropdown right under the input with fixed positioning, so it floats
-  // above everything (footer, other cards) and never gets clipped by the scroll area.
-  const placeCityMenu = () => {
-    const r = cityInputRef.current?.getBoundingClientRect();
-    if (r) setCityMenu({ top: r.bottom + 6, left: r.left, width: r.width });
-  };
-  useEffect(() => {
-    if (!cityFocus) return;
-    placeCityMenu();
-    const upd = () => placeCityMenu();
-    window.addEventListener("scroll", upd, true);
-    window.addEventListener("resize", upd);
-    return () => { window.removeEventListener("scroll", upd, true); window.removeEventListener("resize", upd); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cityFocus]);
 
   const go = (to: number) => { setDir(to > step ? 1 : -1); setStep(Math.max(0, Math.min(STEPS.length - 1, to))); setErr(""); };
   const back = () => (step === 0 ? nav("/") : go(step - 1));
@@ -112,8 +92,10 @@ export default function CreateEvent() {
     transcript.current.push(text);
     const ev = detectEventType(text); if (ev && !type) setType(ev);
     const g = detectGuests(text); if (g) { setGuests(g); addBubble({ kind: "guests", label: `${g} guests` }); }
-    // pull when & where straight from the conversation — no manual screen
+    // pull when & where + budget straight from the conversation — no manual screen
     const dt = detectDate(text); if (dt) { setDate(dt); addBubble({ kind: "date", label: dt }); }
+    const bud = detectBudget(text);
+    if (bud) { setBudget(bud); addBubble({ kind: "budget", label: `${cur.symbol}${bud.toLocaleString()}` }); }
     const loc = detectCityInText(text);
     if (loc) {
       setCity(loc.city);
@@ -200,16 +182,6 @@ export default function CreateEvent() {
     pinUrls.current.push(u); addBubble({ kind: "source", label: u.replace(/^https?:\/\/(www\.)?/, "").slice(0, 26) });
     setPinUrl(""); setErr("");
   };
-
-  // Empty query → the whole city list for the country (a real dropdown you can just
-  // pick from). As you type, cities on that letter first (prefix), then any that contain it.
-  const citySuggest = useMemo(() => {
-    const all = citiesFor(country); const q = city.trim().toLowerCase();
-    if (!q) return all;
-    const starts = all.filter((c) => c.toLowerCase().startsWith(q));
-    const contains = all.filter((c) => c.toLowerCase().includes(q) && !c.toLowerCase().startsWith(q));
-    return [...starts, ...contains];
-  }, [country, city]);
 
   const create = async () => {
     if (!type) { go(0); setErr("Pick an event type first."); return; }
@@ -327,6 +299,7 @@ export default function CreateEvent() {
                         {b.kind === "source" && <span aria-hidden>📌</span>}
                         {b.kind === "date" && <span aria-hidden>📅&nbsp;</span>}
                         {b.kind === "city" && <span aria-hidden>📍&nbsp;</span>}
+                        {b.kind === "budget" && <span aria-hidden>💰&nbsp;</span>}
                         {b.kind === "keyword" && <span style={{ opacity: 0.5 }}>#</span>}
                         {b.label}<span className="x" onClick={() => removeBubble(b.id)}>×</span>
                       </span>
@@ -389,81 +362,6 @@ export default function CreateEvent() {
 
           {step === 2 && (
             <>
-              <h1 className="wiz-h">When &amp; where</h1>
-              <p className="wiz-sub">The essentials that shape every quote.</p>
-              <div className="field-grid">
-                <div>
-                  <label>Date</label>
-                  <input type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
-                </div>
-                <div>
-                  <label>Guests</label>
-                  <div className="stepper-row">
-                    <button className="btn ghost sm" onClick={() => setGuests((g) => Math.max(1, g - 5))}>–</button>
-                    <input type="number" value={guests} min={1}
-                           onChange={(e) => setGuests(Math.max(1, +e.target.value || 0))} style={{ textAlign: "center" }} />
-                    <button className="btn ghost sm" onClick={() => setGuests((g) => g + 5)}>+</button>
-                  </div>
-                  <div className="preset-row">
-                    {GUEST_PRESETS.map((n) => (
-                      <button key={n} className={`preset ${guests === n ? "on" : ""}`} onClick={() => setGuests(n)}>{n}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label>Country <span className="small">· detected</span></label>
-                  <div className="country-row">
-                    {COUNTRIES.map((c) => (
-                      <button key={c.code} className={`country-chip ${country === c.code ? "on" : ""}`}
-                              onClick={() => {
-                                const oldScale = countryByCode(country).scale;
-                                if (c.scale !== oldScale) setBudget((b) => Math.round(b * c.scale / oldScale / 500) * 500);
-                                setCountry(c.code); setCity("");
-                              }} title={c.name}>
-                        <span style={{ fontSize: 18 }}>{c.flag}</span> {c.code}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label>City</label>
-                  <div className="city-field">
-                    <input ref={cityInputRef} placeholder={`Pick a city — e.g. ${citiesFor(country)[0] || "your city"}`}
-                           value={city} autoComplete="off"
-                           onChange={(e) => { setCity(e.target.value); setCityHi(0); setCityFocus(true); placeCityMenu(); }}
-                           onFocus={() => { setCityFocus(true); setCityHi(0); placeCityMenu(); }}
-                           onBlur={() => setTimeout(() => setCityFocus(false), 150)}
-                           onKeyDown={(e) => {
-                             if (!cityFocus || citySuggest.length === 0) return;
-                             if (e.key === "ArrowDown") { e.preventDefault(); setCityHi((h) => Math.min(h + 1, citySuggest.length - 1)); }
-                             else if (e.key === "ArrowUp") { e.preventDefault(); setCityHi((h) => Math.max(h - 1, 0)); }
-                             else if (e.key === "Enter") { e.preventDefault(); setCity(citySuggest[cityHi] || city); setCityFocus(false); }
-                             else if (e.key === "Escape") { setCityFocus(false); }
-                           }} />
-                    <button type="button" className={`city-caret ${cityFocus ? "open" : ""}`} tabIndex={-1}
-                            aria-label="Show cities"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              if (cityFocus) { setCityFocus(false); }
-                              else { setCityHi(0); placeCityMenu(); setCityFocus(true); cityInputRef.current?.focus(); }
-                            }}>▾</button>
-                  </div>
-                  {cityFocus && citySuggest.length > 0 && cityMenu && (
-                    <div className="city-menu" style={{ position: "fixed", top: cityMenu.top, left: cityMenu.left, width: cityMenu.width }}>
-                      {citySuggest.map((c, i) => (
-                        <div key={c} className={`city-opt ${i === cityHi ? "hi" : ""}`}
-                             onMouseEnter={() => setCityHi(i)}
-                             onMouseDown={() => { setCity(c); setCityFocus(false); }}>{c}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
               <h1 className="wiz-h">Set your budget</h1>
               <p className="wiz-sub">A ceiling for the whole event — the agents negotiate to stay under it.</p>
               <div className="budget-display">
@@ -480,15 +378,28 @@ export default function CreateEvent() {
                      max={budgetHi} step={500 * cur.scale}
                      value={Math.min(budgetHi, Math.max(budgetLo, budget))} onChange={(e) => setBudget(+e.target.value)} />
               <div className="wiz-review">
+                <div className="rev-caption small">Pulled from your conversation — tweak anything the agent misheard.</div>
                 <div className="rev-row"><span>Event</span><b className="capitalize">{type.replace("_", " ") || "—"}</b></div>
-                <div className="rev-row"><span>Date</span><b>{date || "—"}</b></div>
-                <div className="rev-row"><span>Guests</span><b>{guests}</b></div>
-                <div className="rev-row"><span>Location</span><b>{city ? `${city}, ` : ""}{cur.flag} {cur.code}</b></div>
+                <div className="rev-row"><span>Date</span>
+                  <input type="date" className="rev-input" value={date} min={today} onChange={(e) => setDate(e.target.value)} /></div>
+                <div className="rev-row"><span>Guests</span>
+                  <input type="number" className="rev-input" min={1} value={guests}
+                         onChange={(e) => setGuests(Math.max(1, +e.target.value || 0))} /></div>
+                <div className="rev-row"><span>City</span>
+                  <input className="rev-input" list="wiz-cities" placeholder={citiesFor(country)[0] || "your city"}
+                         value={city} onChange={(e) => setCity(e.target.value)} /></div>
+                <div className="rev-row"><span>Country</span>
+                  <select className="rev-input" value={country}
+                          onChange={(e) => { const c = e.target.value; const os = countryByCode(country).scale, ns = countryByCode(c).scale;
+                            if (ns !== os) setBudget((b) => Math.round(b * ns / os / 500) * 500); setCountry(c); }}>
+                    {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                  </select></div>
                 {colors.length > 0 && (
                   <div className="rev-row"><span>Palette</span>
                     <span className="flex gap-1">{colors.map((h) => <span key={h} className="swatch-dot" style={{ background: h }} />)}</span></div>
                 )}
               </div>
+              <datalist id="wiz-cities">{citiesFor(country).map((c) => <option key={c} value={c} />)}</datalist>
             </>
           )}
         </div>

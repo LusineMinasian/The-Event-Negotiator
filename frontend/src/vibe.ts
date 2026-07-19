@@ -82,6 +82,37 @@ export function detectGuests(text: string): number | null {
   return null;
 }
 
+// Parse a budget amount (in the spoken/local currency) from the conversation.
+// Needs a money signal — a currency ($/€/֏/dollars/dram/…), a budget word
+// (budget/spend/ceiling/max/…) or a k/thousand/million multiplier — so it never
+// mistakes a guest count ("120 guests") for money. Returns the number or null.
+export function detectBudget(text: string): number | null {
+  // lowercase only — must NOT strip "." / "," so "1.5" and "30,000" survive
+  const t = text.toLowerCase();
+  const NUM = String.raw`(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)`;
+  const MULT = String.raw`(k|thousand|thousands|m|mil|million|millions)?`;
+  const CUR = String.raw`(?:\$|€|֏|dollars?|usd|bucks|dram|amd|euros?|eur|chf|francs?)`;
+  const patterns: { re: string; min?: number }[] = [
+    { re: `${CUR}\\s?${NUM}\\s*${MULT}` },                                   // $20k, ֏5 million
+    { re: `${NUM}\\s*${MULT}\\s*${CUR}` },                                   // 20000 dollars, 5 million dram
+    { re: `(?:budget|spend|spending|ceiling|cap|max(?:imum)?|no more than)\\D{0,14}${NUM}\\s*${MULT}` }, // budget is 20k
+    { re: `${NUM}\\s*(k|thousand|m|mil|million)\\b` },                       // bare "20k" / "1.5 million"
+    { re: `\\b(\\d{1,3}(?:[,\\s]\\d{3})+|\\d{5,})\\b`, min: 1000 },          // bare "25000" / "30 000" (avoids years/small nums)
+  ];
+  const scale = (mu: string) => (/^k|thousand/.test(mu) ? 1e3 : /^m|mil/.test(mu) ? 1e6 : 1);
+  for (const { re, min = 100 } of patterns) {
+    for (const m of t.matchAll(new RegExp(re, "gi"))) {
+      const end = (m.index ?? 0) + m[0].length;
+      if (/^\s*(guests?|people|pax|attendees|persons?)/i.test(t.slice(end, end + 12))) continue; // it's a guest count
+      const raw = parseFloat(m[1].replace(/[,\s]/g, ""));
+      if (isNaN(raw)) continue;
+      const v = Math.round(raw * scale((m[2] || "").toLowerCase()));
+      if (v >= min && v <= 1e9) return v;
+    }
+  }
+  return null;
+}
+
 const MONTH_MAP: Record<string, number> = {
   january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2, april: 3, apr: 3, may: 4,
   june: 5, jun: 5, july: 6, jul: 6, august: 7, aug: 7, september: 8, sep: 8, sept: 8,
