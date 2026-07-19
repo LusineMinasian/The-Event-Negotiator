@@ -104,8 +104,8 @@
   a.card { @apply transition-all duration-150; }
   a.card:hover { transform: translateY(-3px); box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06), 0 18px 40px rgba(15, 23, 42, 0.12); border-color: color-mix(in srgb, var(--brand) 26%, var(--line)); }
   .grid { display: grid; gap: 16px; }
-  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (max-width: 900px) { .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; } }
 
   /* ---------- buttons ---------- */
@@ -481,7 +481,11 @@
      grid overflows and shoves the Live-feed column off the right edge. */
   .dash-cols { @apply grid gap-[18px] items-start; grid-template-columns: minmax(0, 1fr) 340px; }
   @media (max-width: 1100px) { .dash-cols { grid-template-columns: minmax(0, 1fr); } }
-  .dash-left { @apply grid gap-[18px]; min-width: 0; }
+  /* Explicit minmax(0,1fr) column: without it the implicit `auto` column grows to the
+     widest child's min-content (e.g. the savings curve / ticker), pushing the whole left
+     column past its track and under the Live-feed panel. This caps it so charts fill the
+     available width instead of dictating it. */
+  .dash-left { @apply grid gap-[18px]; min-width: 0; grid-template-columns: minmax(0, 1fr); }
   .card-head { @apply flex justify-between items-baseline mb-[10px]; }
   .card-head h3 { @apply m-0; }
 
@@ -560,8 +564,10 @@
 
   /* ---------- interactive voice studio ---------- */
   .studio-stage {
-    border-radius: 22px; padding: 28px; border: 1px solid var(--palette-border);
+    border-radius: 22px; padding: 28px;
+    border: 1px solid color-mix(in srgb, var(--palette-border) 70%, var(--brand) 30%);
     background: linear-gradient(150deg, var(--palette-g1), var(--palette-g2) 55%, var(--palette-g3));
+    box-shadow: 0 6px 24px rgba(79, 70, 229, 0.10), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
     transition: background 0.9s ease-out, border-color 0.9s ease-out; min-height: 340px;
   }
   .mic-btn {

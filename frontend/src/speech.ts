@@ -54,9 +54,14 @@ export function useSpeechRecognition(
 
 // ── ElevenLabs Conversational AI (realtime), via the official @elevenlabs/client SDK.
 // The SDK owns the hard parts — mic capture (AudioWorklet), server VAD / turn-taking,
-// audio playback and ping/pong — which a hand-rolled WebSocket got wrong (the agent
-// spoke once then never heard the user). We just relay user/agent transcripts. Activates
-// only when the backend returns a signed URL (keys + agent configured). ────────────────
+// audio playback and ping/pong. We just relay user/agent transcripts.
+//
+// Connection: prefer WebRTC by agentId (the SDK's robust default — handles audio, NAT
+// and keep-alive). Our intake agent is PUBLIC (enable_auth=false), so the SDK fetches a
+// conversation token from agentId with no API key. The old signedUrl path forces the
+// SDK into raw-WebSocket audio mode, which was dropping the socket right after the
+// agent's first line (a flood of "WebSocket is already in CLOSING or CLOSED state").
+// A signedUrl is still accepted as a fallback. ─────────────────────────────────────────
 export function useElevenLabsAgent(opts: {
   onUserText: (t: string) => void;
   onAgentText?: (t: string) => void;
@@ -74,23 +79,34 @@ export function useElevenLabsAgent(opts: {
     setActive(false);
   };
 
-  const start = async (signedUrl: string) => {
+  const start = async (conn: { agentId?: string; signedUrl?: string }) => {
     setError("");
     try {
       // load the SDK on demand — keeps it out of the initial bundle
       const { Conversation } = await import("@elevenlabs/client");
-      convRef.current = await Conversation.startSession({
-        signedUrl,
-        connectionType: "websocket",
+      const common = {
         onConnect: () => setActive(true),
-        onDisconnect: () => setActive(false),
-        onError: (msg: string) => setError(msg || "connection error"),
+        // details.reason: "agent" (agent ended) | "user" | "error" — surface the real
+        // cause instead of the SDK's internal send-on-closed-socket spam.
+        onDisconnect: (details?: any) => {
+          convRef.current = null;
+          setActive(false);
+          if (details?.reason === "error") {
+            const why = details?.message || details?.context?.reason || "connection dropped";
+            setError(why); console.warn("[intake] agent disconnected:", why, details);
+          }
+        },
+        onError: (msg: string, ctx?: any) => { setError(msg || "connection error"); console.warn("[intake] error:", msg, ctx); },
         onMessage: ({ message, source }: { message: string; source: "user" | "ai" }) => {
           if (!message) return;
           if (source === "user") uRef.current?.(message);
           else aRef.current?.(message);
         },
-      });
+      };
+      const session: any = conn.agentId
+        ? { agentId: conn.agentId, connectionType: "webrtc", ...common }
+        : { signedUrl: conn.signedUrl, connectionType: "websocket", ...common };
+      convRef.current = await Conversation.startSession(session);
     } catch (e: any) {
       setError(e?.message || "mic/permission error");
       setActive(false);

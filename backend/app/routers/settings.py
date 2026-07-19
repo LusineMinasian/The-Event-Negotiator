@@ -7,9 +7,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..auth import current_user
+from ..config import settings
 from ..db import get_db
 from ..models import User, UserSecret
-from ..services import user_settings
+from ..services import elevenlabs_connector, user_settings
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -42,3 +43,21 @@ def put_keys(body: KeysIn, user: User = Depends(current_user), db: Session = Dep
     db.commit()
     user_settings.apply_to_settings(merged)      # take effect immediately
     return user_settings.status(merged)
+
+
+@router.post("/test-call")
+async def test_call(user: User = Depends(current_user)):
+    """Diagnostic: place ONE real call to your saved number and report exactly what
+    ElevenLabs said. current_user has already applied this user's keys to settings."""
+    missing = [label for field, label in [
+        ("elevenlabs_api_key", "ElevenLabs API key"),
+        ("elevenlabs_agent_id", "caller agent ID"),
+        ("elevenlabs_phone_number_id", "ElevenLabs phone number ID"),
+        ("simulation_phone_number", "your phone number"),
+    ] if not (getattr(settings, field, "") or "").strip()]
+    if missing:
+        return {"ok": False, "error": "Missing: " + ", ".join(missing) + ". Fill these in and Save first."}
+    res = await elevenlabs_connector.test_outbound_call(
+        settings.elevenlabs_phone_number_id, settings.simulation_phone_number)
+    res["to"] = settings.simulation_phone_number
+    return res

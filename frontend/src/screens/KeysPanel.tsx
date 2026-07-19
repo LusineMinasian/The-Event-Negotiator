@@ -44,6 +44,8 @@ export default function KeysPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [importMsg, setImportMsg] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {

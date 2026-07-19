@@ -121,7 +121,15 @@ export default function CreateEvent() {
   const listening = speech.listening || el.active;
   const toggleMic = async () => {
     setErr("");
-    if (elReady) { if (el.active) return el.stop(); const r = await api.intakeSignedUrl(); r.configured ? el.start(r.signed_url) : (setElReady(false), speech.start()); return; }
+    if (elReady) {
+      if (el.active) return el.stop();
+      const r = await api.intakeSignedUrl();
+      // Prefer WebRTC by agent id (public agent, robust); signed URL is the fallback.
+      if (r.agent_id) el.start({ agentId: r.agent_id });
+      else if (r.signed_url) el.start({ signedUrl: r.signed_url });
+      else { setElReady(false); speech.start(); }
+      return;
+    }
     if (!speech.supported) { setErr("Voice needs Google Chrome — or just type the details ahead."); return; }
     speech.listening ? speech.stop() : speech.start();
   };

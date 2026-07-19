@@ -34,17 +34,22 @@ async def elevenlabs_status(user: User = Depends(current_user)) -> dict:
 
 @router.get("/elevenlabs/intake-signed-url")
 async def intake_signed_url(user: User = Depends(current_user)) -> dict:
-    """Signed WebSocket URL for the conversational intake agent (the voice studio).
-    Returns configured:false when no key/agent is set so the UI can fall back to the
-    browser's own speech recognition."""
+    """Connection details for the conversational intake agent (the voice studio).
+
+    The intake agent is public (enable_auth=false), so the browser can connect over
+    WebRTC with just the agent id and NO API key — the robust path. We therefore return
+    `agent_id` whenever it's configured, even with no key. A signed URL is added as a
+    fallback when a key is present. configured:false → the UI uses browser speech."""
     agent_id = settings.elevenlabs_intake_agent_id or settings.elevenlabs_agent_id
-    if not (settings.elevenlabs_api_key and agent_id):
-        return {"configured": False, "reason": "ELEVENLABS_API_KEY / agent id not set"}
-    try:
-        url = await elevenlabs_connector.get_signed_url(agent_id)
-        return {"configured": True, "agent_id": agent_id, "signed_url": url}
-    except Exception as exc:  # noqa: BLE001
-        return {"configured": False, "reason": str(exc)[:200]}
+    if not agent_id:
+        return {"configured": False, "reason": "ELEVENLABS_INTAKE_AGENT_ID not set"}
+    resp = {"configured": True, "agent_id": agent_id}
+    if settings.elevenlabs_api_key:
+        try:
+            resp["signed_url"] = await elevenlabs_connector.get_signed_url(agent_id)
+        except Exception as exc:  # noqa: BLE001 — signed URL is optional; WebRTC-by-id still works
+            resp["signed_url_error"] = str(exc)[:200]
+    return resp
 
 
 @router.get("/preflight")

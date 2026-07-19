@@ -51,6 +51,34 @@ async def initiate_outbound_call(agent_phone_number_id: str, to_number: str,
         return r.json()
 
 
+async def test_outbound_call(agent_phone_number_id: str, to_number: str) -> dict:
+    """One-shot diagnostic: place a single outbound call and return the REAL ElevenLabs
+    response or error body (status + text), never raising. Used by the Settings
+    'Test call' button so failures are visible instead of silently simulated."""
+    if not settings.elevenlabs_api_key:
+        return {"ok": False, "error": "ELEVENLABS_API_KEY is not set."}
+    body = {
+        "agent_id": settings.elevenlabs_agent_id,
+        "agent_phone_number_id": agent_phone_number_id,
+        "to_number": to_number,
+        "conversation_initiation_client_data": {
+            "dynamic_variables": {
+                "vendor_name": "Test Vendor",
+                "spec_summary": "a quick test call from The Event Negotiator",
+            },
+        },
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(f"{EL_API}/convai/twilio/outbound-call",
+                                  headers=_headers(), json=body)
+    except Exception as exc:  # noqa: BLE001 — surface the network error verbatim
+        return {"ok": False, "error": f"Network error reaching ElevenLabs: {exc}"[:400]}
+    if r.status_code >= 400:
+        return {"ok": False, "status": r.status_code, "error": (r.text or r.reason_phrase)[:400]}
+    return {"ok": True, "status": r.status_code, "response": r.json()}
+
+
 async def verify_connection() -> dict:
     """Best-effort health check for the dashboard's connector card. Confirms the API
     key works and the configured Caller Agent + phone numbers exist. Never raises —

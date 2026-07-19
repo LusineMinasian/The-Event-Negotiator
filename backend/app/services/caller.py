@@ -420,9 +420,16 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
         result = await elevenlabs_connector.initiate_outbound_call(
             phone_id, to, dynamic_variables)
     except Exception as exc:  # noqa: BLE001 — never let a live failure kill the campaign
+        # surface the real reason: httpx status errors carry the ElevenLabs body
+        detail = str(exc)
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            try: detail = f"{resp.status_code}: {resp.text}"
+            except Exception: pass
+        print(f"[live-dial] campaign={campaign_id} call={call.id} to={to} FAILED: {detail}", flush=True)
         await bus.publish(campaign_id, "call.phase", {"call_id": call.id, "phase": "dialing"})
         await _say(db, campaign_id, call, "system",
-                   f"Live dial failed ({str(exc)[:80]}) — using simulation.", 0)
+                   f"Live dial failed — {detail[:160]} — using simulation.", 0)
         return False
     call.twilio_sid = result.get("conversation_id", result.get("callSid", ""))
     call.phase = "dialing"
