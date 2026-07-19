@@ -4,8 +4,9 @@ import { api } from "../api";
 import { clearTheme } from "../palette";
 import { useCampaignSocket, WsEvent } from "../ws";
 import { AreaChart, Bars, Donut } from "../charts";
-import { Avatar, PullMeToast } from "../ui";
+import { Avatar, PullMeToast, QuestionPrompt } from "../ui";
 import CallDrawer from "./CallDrawer";
+import AgentInfo from "./AgentInfo";
 
 const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 const CAT_COLORS = ["var(--brand)", "var(--good)", "var(--warn)", "#7a4fc0", "#2a5bd0"];
@@ -14,6 +15,7 @@ type Feed = { id: number; kind: string; text: string; accent?: string };
 type Call = {
   call_id: string; vendor_name: string; category: string; phase: string; status: string;
   outcome?: string; last_line: string; opening?: number; total?: number;
+  segment_display?: string; segment_key?: string; style?: string;
 };
 
 export default function LiveDashboard() {
@@ -25,6 +27,7 @@ export default function LiveDashboard() {
   const [selected, setSelected] = useState<string | null>(null);
   const [liveUtterance, setLiveUtterance] = useState<any>(null);
   const [handoff, setHandoff] = useState<any>(null);
+  const [question, setQuestion] = useState<any>(null);
   const fid = useRef(0);
   const refetchT = useRef<number | undefined>(undefined);
   const statusRef = useRef<string>("");
@@ -60,7 +63,8 @@ export default function LiveDashboard() {
       case "call.initiated":
         setCalls((c) => ({ ...c, [p.call_id]: {
           call_id: p.call_id, vendor_name: p.vendor_name, category: p.category,
-          phase: "dialing", status: "in_progress", last_line: "" } }));
+          phase: "dialing", status: "in_progress", last_line: "",
+          segment_display: p.segment_display, segment_key: p.segment_key, style: p.style } }));
         push("call", `Dialing ${p.vendor_name} · ${p.category}`); scheduleRefetch(); break;
       case "call.phase": upd(p.call_id, { phase: p.phase }); break;
       case "call.live": upd(p.call_id, { phase: "live" }); push("live", `☎ Live call connected · ${p.vendor_name}`, "var(--good)"); break;
@@ -74,9 +78,13 @@ export default function LiveDashboard() {
       case "price.move": upd(p.call_id, { total: p.to_total });
         push("move", `${p.vendor_name} ${money(p.from_total)} → ${money(p.to_total)} · ${p.leverage}`, "var(--good)");
         scheduleRefetch(); break;
-      case "segment.reclassified": push("reclass", `Reclassified → ${p.segment_display}`, "#7a4fc0"); scheduleRefetch(); break;
+      case "segment.reclassified":
+        upd(p.call_id, { segment_display: p.segment_display, segment_key: p.to_segment });
+        push("reclass", `Reclassified → ${p.segment_display}`, "#7a4fc0"); scheduleRefetch(); break;
       case "handoff.requested": setHandoff(p); push("handoff", `Pull-me-in · ${p.vendor_name}`, "var(--bad)"); break;
       case "handoff.resolved": setHandoff(null); push("handoff", `Handoff resolved (${p.resolved_by})`); break;
+      case "question.asked": setQuestion(p); push("q", `Your call needed · ${p.vendor_name}`, "var(--brand)"); break;
+      case "question.resolved": setQuestion(null); push("q", `Answered (${p.answer}) · agent bargaining`, "var(--brand)"); scheduleRefetch(); break;
       case "call.ended": upd(p.call_id, { status: "completed", outcome: p.outcome, phase: "closed" }); scheduleRefetch(); break;
       case "campaign.completed": push("done", "Campaign complete — receipt ready", "var(--good)"); load(); break;
     }
@@ -86,6 +94,10 @@ export default function LiveDashboard() {
   const resolveHandoff = async () => {
     if (handoff) await api.resolveHandoff(campaignId!, handoff.call_id);
     setHandoff(null);
+  };
+  const answerQuestion = async (key: string) => {
+    const q = question; setQuestion(null);
+    if (q) { try { await api.resolveQuestion(campaignId!, q.call_id, key); } catch { /* noop */ } }
   };
 
   // cumulative savings curve from ordered price moves (server truth, refreshes on poll)
@@ -172,7 +184,11 @@ export default function LiveDashboard() {
                     <Avatar name={c.vendor_name} size={30} />
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold truncate">{c.vendor_name}</div>
-                      <span className="phase-badge">{c.status === "completed" ? (c.outcome || "done") : c.phase}</span>
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <span className="phase-badge">{c.status === "completed" ? (c.outcome || "done") : c.phase}</span>
+                        {c.style && <span className={`style-tag style-${c.style}`}>{c.style}</span>}
+                        <AgentInfo segmentKey={c.segment_key} style={c.style} />
+                      </span>
                     </div>
                     <span className="mono" style={{ fontWeight: 700, fontSize: 13 }}>
                       {c.opening && c.total && c.total < c.opening && (
@@ -276,6 +292,7 @@ export default function LiveDashboard() {
       </div>
 
       {handoff && <PullMeToast vendor={handoff.vendor_name} detail={handoff.detail} onResolve={resolveHandoff} />}
+      {question && <QuestionPrompt q={question} onAnswer={answerQuestion} />}
 
       {selected && (
         <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}

@@ -4,6 +4,7 @@ import { api } from "../api";
 import { clearTheme } from "../palette";
 import { Stepper, Avatar, Skeleton } from "../ui";
 import PlaceCard from "./PlaceCard";
+import AgentInfo from "./AgentInfo";
 
 export default function Discovery() {
   const { specId } = useParams();
@@ -116,10 +117,13 @@ export default function Discovery() {
                           </div>
                         </div>
                       </div>
-                      <span className="seg-tag">{v.segment_display}</span>
-                      {v.style ? <span className={`style-tag style-${v.style}`}>{v.style}</span> : <span />}
-                      <div title={`confidence ${Math.round(v.segment_confidence * 100)}%`}>
-                        <div className="conf-bar"><span style={{ width: `${v.segment_confidence * 100}%` }} /></div>
+                      <div className="vrow-meta">
+                        <span className="seg-tag">{v.segment_display}</span>
+                        {v.style && <span className={`style-tag style-${v.style}`}>{v.style}</span>}
+                        <AgentInfo segmentKey={v.segment_key} style={v.style} confidence={v.segment_confidence} />
+                        <div title={`confidence ${Math.round(v.segment_confidence * 100)}%`}>
+                          <div className="conf-bar"><span style={{ width: `${v.segment_confidence * 100}%` }} /></div>
+                        </div>
                       </div>
                       <button className="btn ghost sm" onClick={(e) => { e.stopPropagation(); toggle(v); }}>{v.excluded ? "Include" : "Exclude"}</button>
                       <span className="row-chev" aria-hidden>{expanded === v.id ? "▲" : "▼"}</span>

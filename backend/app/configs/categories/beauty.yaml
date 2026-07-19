@@ -1,0 +1,31 @@
+key: beauty
+display_name: Hair & makeup
+places_types: [beauty_salon, hair_care, make_up_artist]
+places_keywords: {en: "wedding hair and makeup"}
+normalization_unit: per_event
+job_spec_taxonomy: [services, people, trial, on_site]
+expected_line_items: [service, trial, travel, extra_person, early_start]
+challengeable_fees: [travel, early_start, trial]
+segments:
+  - beauty__salon_team
+  - beauty__freelance_artist
+segment_classifier_signals:
+  - {signal: places_type, maps: {beauty_salon: beauty__salon_team, hair_care: beauty__salon_team, make_up_artist: beauty__freelance_artist}}
+  - {signal: review_count, thresholds: {"<50": beauty__freelance_artist}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: incomplete_itemization, severity: medium}
+call_objectives:
+  - "Get the per-person rate and the trial cost"
+  - "Confirm on-site vs in-salon and early-start fees"
+  - "Surface travel and extra-artist fees"
+diagnostic_questions:
+  - {q: "Is it a salon with a team, or a freelance artist?", determines: decision_maker}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Do hair-only for the bridesmaids and skip the makeup add-on?"
+  accept_label: "Hair only"
+  decline_label: "Full glam"
+  accept_line: "Hair-only for the bridesmaids works — what does dropping the makeup add-on save?"
+  lever: scope_reduction

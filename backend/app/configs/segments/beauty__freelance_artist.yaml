@@ -1,0 +1,29 @@
+key: beauty__freelance_artist
+parent_category: beauty
+display_name: Freelance artist
+applicable_events: [wedding, baby_shower, birthday]
+guest_range: [5, 80]
+economics:
+  cost_structure: {labor: 0.75, products: 0.15, overhead: 0.10}
+  bottleneck: artist_time
+  capacity_perishable: true
+  min_order_exists: false
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: high
+levers:
+  - {key: relationship, weight: 0.70}
+  - {key: weekday_slot, weight: 0.60}
+  - {key: scope_reduction, weight: 0.55}
+levers_harmful:
+  - {key: volume, reason: "One artist can only do so many faces before the ceremony"}
+resistance_profile:
+  opening_markup_expected: 0.12
+  typical_concession_ceiling: 0.18
+  hard_floor_signal: "artist day rate"
+  stonewall_probability: 0.15
+  upsell_probability: 0.25
+counterparty:
+  style: warm
+  hidden_fees: []
+benchmark_key: beauty_freelance_artist_{region_profile}

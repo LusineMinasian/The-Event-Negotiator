@@ -31,3 +31,11 @@ diagnostic_questions:
   - {q: "Will you personally work the event, or do you have a team?", determines: decision_maker}
   - {q: "Do you have a minimum order?", determines: min_order_exists}
   - {q: "Do you have fixed packages, or do you price per job?", determines: pricing_model}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Switch to a premium buffet instead of plated service to cut the cost?"
+  accept_label: "Buffet works"
+  decline_label: "Keep it plated"
+  accept_line: "We'll go premium buffet instead of plated — how does that change the per-head price?"
+  lever: scope_reduction

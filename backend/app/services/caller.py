@@ -28,8 +28,11 @@ from .event_bus import bus
 
 # Registry of pending human-handoff resolutions (Pull Me In)
 handoff_events: dict[str, asyncio.Event] = {}
+# Registry of pending mid-call trade-off questions (answer key stored back per call)
+question_events: dict[str, asyncio.Event] = {}
+question_answers: dict[str, str] = {}
 
-STEP = 0.9  # seconds between utterances (tune for demo pacing)
+STEP = 0.7  # seconds between utterances (tune for demo pacing)
 
 
 def _now() -> datetime:
@@ -102,18 +105,18 @@ async def _run_campaign(campaign_id: str) -> None:
     state = {"handoff_done": False, "budget": payload.get("budget", {})}
     ordered = _order_vendors(vendors)
 
-    sem = asyncio.Semaphore(3)
+    sem = asyncio.Semaphore(6)
 
     async def guarded(v: Vendor):
         async with sem:
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(0.2)
             await run_single_call(campaign_id, v.id, payload, event_key, region_key, verified, state)
 
     # stagger starts slightly for a lively ticker
     tasks = []
     for i, v in enumerate(ordered):
         tasks.append(asyncio.create_task(guarded(v)))
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.25)
     await asyncio.gather(*tasks)
 
     await finalize_campaign(campaign_id, event_key, payload)
@@ -211,6 +214,11 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
                          payload, verified, quote, ts)
         ts += 30
 
+        # 3a) Trade-off — the agent surfaces a scope decision to the user mid-call and
+        # bargains on their behalf with the answer (one per campaign).
+        await _maybe_tradeoff(db, campaign_id, call, vendor, cp, quote, state, ts)
+        ts += 12
+
         # 3b) Pull Me In — one human handoff per campaign when a category budget is breached
         await _maybe_handoff(db, campaign_id, call, vendor, cp, payload, state, ts)
         ts += 10
@@ -235,6 +243,64 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
                       cp, resolved, verified, payload, event_key, quote)
     finally:
         db.close()
+
+
+async def _maybe_tradeoff(db, campaign_id, call, vendor, cp, quote, state, ts):
+    """Surface a scope trade-off to the user mid-call (e.g. city-view vs sea-view). The
+    agent pauses, asks, and — if the user accepts — bargains the concession on their
+    behalf so the price moves. One per campaign; declines/timeouts change nothing."""
+    if state.get("tradeoff_done"):
+        return
+    store = get_store()
+    tr = store.category(vendor.category).get("tradeoff")
+    if not tr:
+        return
+    state["tradeoff_done"] = True
+
+    await _say(db, campaign_id, call, "agent",
+               "One moment — let me check a quick preference with my client.", ts); ts += 3
+    await bus.publish(campaign_id, "question.asked", {
+        "call_id": call.id, "vendor_name": vendor.name, "category": vendor.category,
+        "question": tr["question"],
+        "options": [{"key": "accept", "label": tr.get("accept_label", "Yes")},
+                    {"key": "decline", "label": tr.get("decline_label", "No")}],
+    })
+    ev = asyncio.Event()
+    question_events[call.id] = ev
+    try:
+        await asyncio.wait_for(ev.wait(), timeout=25)
+        answer = question_answers.pop(call.id, "decline")
+    except asyncio.TimeoutError:
+        answer = "timeout"
+    finally:
+        question_events.pop(call.id, None)
+    await bus.publish(campaign_id, "question.resolved", {"call_id": call.id, "answer": answer})
+
+    if answer == "accept":
+        lever_key = tr.get("lever", "scope_reduction")
+        lev = store.levers.get(lever_key, {})
+        await _say(db, campaign_id, call, "agent",
+                   tr.get("accept_line", "Good news — my client is flexible there. What's your best rate then?"),
+                   ts, lever_key); ts += 6
+        from_total = cp.current
+        concession = cp.apply_lever({"key": lever_key, "weight": 0.85, "unlock": lev.get("unlock", 0.35)})
+        await _say(db, campaign_id, call, "vendor", cp.concede_line(concession), ts); ts += 4
+        if concession > 0:
+            quote.line_items = cp.base_line_items(); quote.total = cp.current; db.commit()
+            pe = PriceEvent(quote_id=quote.id, call_id=call.id, from_total=from_total, to_total=cp.current,
+                            trigger_utterance_id="", leverage_type=lever_key, segment_key=call.segment_key_final, ts_s=ts)
+            db.add(pe); db.commit()
+            _append_lever(quote, {"key": lever_key, "display": lev.get("display", lever_key.replace("_", " ").title())})
+            db.commit()
+            await bus.publish(campaign_id, "price.move", {
+                "call_id": call.id, "vendor_name": vendor.name, "category": vendor.category,
+                "from_total": from_total, "to_total": cp.current, "leverage": "Client-approved trade-off",
+                "delta_pct": round((cp.current - from_total) / from_total * 100, 1) if from_total else 0,
+            })
+            await bus.publish(campaign_id, "quote.update", _quote_event(quote, vendor))
+    else:
+        note = "Client prefers to keep it as-is — no change." if answer == "decline" else "No reply in time — keeping the original scope."
+        await _say(db, campaign_id, call, "system", note, ts)
 
 
 async def _maybe_handoff(db, campaign_id, call, vendor, cp, payload, state, ts):

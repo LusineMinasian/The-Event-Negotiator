@@ -1,0 +1,31 @@
+key: flowers
+display_name: Florals
+places_types: [florist, flower_shop]
+places_keywords: {en: "wedding florist"}
+normalization_unit: per_event
+job_spec_taxonomy: [bouquets, centerpieces, installations, palette]
+expected_line_items: [bridal_bouquet, centerpieces, ceremony_arch, delivery, setup]
+challengeable_fees: [delivery, setup, rush]
+segments:
+  - flowers__studio
+  - flowers__freelance
+segment_classifier_signals:
+  - {signal: places_type, maps: {flower_shop: flowers__studio, florist: flowers__freelance}}
+  - {signal: review_count, thresholds: {"<40": flowers__freelance}}
+red_flags:
+  - {rule: below_market_30, threshold: 0.70, severity: high}
+  - {rule: incomplete_itemization, severity: medium}
+call_objectives:
+  - "Get the per-arrangement and full-event price"
+  - "Confirm what's included: bouquets, centerpieces, installations"
+  - "Surface delivery, setup and teardown fees"
+diagnostic_questions:
+  - {q: "Do you run a studio with a team, or freelance?", determines: decision_maker}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Use seasonal blooms instead of imported peonies?"
+  accept_label: "Seasonal is fine"
+  decline_label: "Keep the peonies"
+  accept_line: "Seasonal blooms are fine with us instead of imported peonies — does that lower it?"
+  lever: scope_reduction

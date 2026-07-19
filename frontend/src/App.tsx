@@ -26,7 +26,7 @@ function TopBar() {
   return (
     <div className="topbar">
       <NavLink to="/" className="brand" style={{ textDecoration: "none" }}>
-        <span className="dot" /> The Event Negotiator
+        <span className="dot" /> <span className="brand-name">The Event Negotiator</span>
       </NavLink>
       <nav className="topnav">
         <NavLink to="/" end>Events</NavLink>
@@ -40,7 +40,7 @@ function TopBar() {
           {mode.live ? "● live calls" : "● simulation"}
         </span>
       )}
-      <span className="small">{user?.email}</span>
+      <span className="small user-email">{user?.email}</span>
       <button className="btn ghost sm" onClick={logout}>Sign out</button>
     </div>
   );

@@ -1,0 +1,31 @@
+key: flowers__studio
+parent_category: flowers
+display_name: Floral design studio
+applicable_events: [wedding, baby_shower, birthday]
+guest_range: [20, 300]
+economics:
+  cost_structure: {materials: 0.55, labor: 0.30, overhead: 0.15}
+  bottleneck: sourcing
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 1500
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: medium
+levers:
+  - {key: off_season, weight: 0.75}
+  - {key: scope_reduction, weight: 0.70}
+  - {key: bundle, weight: 0.55}
+  - {key: weekday_slot, weight: 0.50}
+levers_harmful:
+  - {key: volume, reason: "Perishable materials cap the discount on volume"}
+resistance_profile:
+  opening_markup_expected: 0.18
+  typical_concession_ceiling: 0.16
+  hard_floor_signal: "flower cost"
+  stonewall_probability: 0.10
+  upsell_probability: 0.50
+counterparty:
+  style: upseller
+  hidden_fees: [{label: "Delivery & setup", amount: 220, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: flowers_studio_{region_profile}

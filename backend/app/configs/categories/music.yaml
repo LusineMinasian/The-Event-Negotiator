@@ -20,3 +20,11 @@ call_objectives:
   - "Surface the agency commission and equipment/travel add-ons"
 diagnostic_questions:
   - {q: "Are you the performer, or an agency?", determines: decision_maker}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Take the DJ package instead of the live band?"
+  accept_label: "DJ is fine"
+  decline_label: "Keep the band"
+  accept_line: "We'll take the DJ set instead of the full band — what's the price on that?"
+  lever: tier_downgrade

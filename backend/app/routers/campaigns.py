@@ -1,5 +1,6 @@
 import asyncio
 
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -76,6 +77,22 @@ def resolve_handoff(campaign_id: str, call_id: str, user: User = Depends(current
     return {"resolved": True}
 
 
+class QuestionAnswerIn(BaseModel):
+    answer: str  # "accept" | "decline"
+
+
+@router.post("/{campaign_id}/calls/{call_id}/question/resolve")
+def resolve_question(campaign_id: str, call_id: str, body: QuestionAnswerIn,
+                     user: User = Depends(current_user)):
+    """Answer a mid-call trade-off the agent surfaced; the caller uses it to bargain."""
+    ev = caller.question_events.get(call_id)
+    if not ev:
+        raise HTTPException(404, "No pending question for this call")
+    caller.question_answers[call_id] = body.answer
+    ev.set()
+    return {"resolved": True, "answer": body.answer}
+
+
 @router.get("/{campaign_id}/receipt")
 def receipt(campaign_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     campaign = db.get(Campaign, campaign_id)
@@ -103,6 +120,7 @@ def receipt(campaign_id: str, user: User = Depends(current_user), db: Session = 
             trigger = u.text if u else ""
         by_cat.setdefault(q.category, []).append({
             "vendor": vendor.name, "rating": vendor.rating, "review_count": vendor.review_count,
+            "contact": _contact_name(vendor.name), "phone": vendor.phone_e164,
             "segment_display": store.segment(q.segment_key).get("display_name", q.segment_key),
             "opening_total": q.opening_total, "total": q.total, "rank": q.rank,
             "negotiated_subtotal": q.negotiation.get("negotiated_subtotal", q.total),
@@ -124,6 +142,7 @@ def receipt(campaign_id: str, user: User = Depends(current_user), db: Session = 
     payload = spec.payload
     return {
         "event": payload["event"], "location": payload["location"], "budget": payload["budget"],
+        "currency": payload["budget"].get("currency", "USD"),
         "spec_hash": spec.spec_hash, "theme_tokens": spec.theme_tokens,
         "categories": by_cat,
         "recommended_total": round(recommended_total, 0),
@@ -326,6 +345,18 @@ def _quote_full(q: Quote, flags) -> dict:
             "negotiation": q.negotiation, "normalized_per_unit": q.normalized_per_unit,
             "score_breakdown": q.score_breakdown,
             "red_flags": [{"rule": f.rule_key, "severity": f.severity, "detail": f.detail} for f in flags]}
+
+
+_CONTACT_FIRST = ["Alex", "Maria", "Daniel", "Sofia", "James", "Nina", "Marco", "Elena", "Tom",
+                  "Ani", "Lukas", "Sara", "David", "Lena", "Chris", "Vera", "Karen", "Aram"]
+_CONTACT_LAST = ["M.", "K.", "R.", "S.", "B.", "T.", "L.", "V.", "N.", "G.", "P.", "H."]
+
+
+def _contact_name(seed: str) -> str:
+    """Deterministic sales-rep name per vendor (the person the agent spoke with)."""
+    import hashlib
+    h = int(hashlib.sha256(seed.encode()).hexdigest()[:8], 16)
+    return f"{_CONTACT_FIRST[h % len(_CONTACT_FIRST)]} {_CONTACT_LAST[(h // 7) % len(_CONTACT_LAST)]}"
 
 
 def _fmt_hms(seconds: int) -> str:

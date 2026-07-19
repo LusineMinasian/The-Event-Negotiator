@@ -28,3 +28,11 @@ call_objectives:
 diagnostic_questions:
   - {q: "Is that date still open on your calendar?", determines: capacity_perishable}
   - {q: "Do you decide on price, or does it need approval?", determines: decision_maker}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Take a city-view suite instead of sea-view to unlock a better rate?"
+  accept_label: "City view is fine"
+  decline_label: "Keep sea view"
+  accept_line: "My client's happy with the city-view room — so what's your best rate on that?"
+  lever: scope_reduction

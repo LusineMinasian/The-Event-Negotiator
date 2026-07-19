@@ -17,7 +17,7 @@ def default_payload(event_type: str, region_profile: str) -> dict:
     guest_default = int(sum(ev.get("typical_guest_range", [25, 25])) / 2)
     horizon = ev.get("planning_horizon_days", [30, 30])[0]
     event_date = (date.today() + timedelta(days=horizon)).isoformat()
-    cats = ev.get("required_categories", [])
+    cats = ev.get("required_categories", []) + ev.get("optional_categories", [])
     alloc = _default_allocation(cats)
     return {
         "spec_hash": "",
@@ -40,7 +40,7 @@ def default_payload(event_type: str, region_profile: str) -> dict:
 
 
 def _default_allocation(cats: list[str]) -> dict:
-    base = {"venue": 0.35, "catering": 0.35, "decor": 0.15, "photo": 0.1, "music": 0.05}
+    base = {"venue": 0.30, "catering": 0.30, "decor": 0.12, "photo": 0.08, "music": 0.05, "flowers": 0.10, "beauty": 0.05}
     alloc = {c: base.get(c, 0.1) for c in cats}
     total = sum(alloc.values()) or 1
     return {c: round(v / total, 2) for c, v in alloc.items()}

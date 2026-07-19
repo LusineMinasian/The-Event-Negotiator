@@ -1,0 +1,30 @@
+key: flowers__freelance
+parent_category: flowers
+display_name: Freelance florist
+applicable_events: [wedding, baby_shower, birthday]
+guest_range: [10, 120]
+economics:
+  cost_structure: {materials: 0.60, labor: 0.30, overhead: 0.10}
+  bottleneck: labor
+  capacity_perishable: true
+  min_order_exists: false
+  decision_maker: owner
+  pricing_model: per_event
+  margin_flexibility: high
+levers:
+  - {key: weekday_slot, weight: 0.70}
+  - {key: relationship, weight: 0.65}
+  - {key: scope_reduction, weight: 0.60}
+  - {key: off_season, weight: 0.55}
+levers_harmful:
+  - {key: tier_downgrade, reason: "No package tiers to downgrade"}
+resistance_profile:
+  opening_markup_expected: 0.12
+  typical_concession_ceiling: 0.20
+  hard_floor_signal: "flower cost"
+  stonewall_probability: 0.15
+  upsell_probability: 0.25
+counterparty:
+  style: warm
+  hidden_fees: []
+benchmark_key: flowers_freelance_{region_profile}

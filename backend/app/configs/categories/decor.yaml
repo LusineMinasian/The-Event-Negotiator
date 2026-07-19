@@ -22,3 +22,11 @@ call_objectives:
   - "Confirm whether teardown is included"
 diagnostic_questions:
   - {q: "Are travel and setup included, or priced separately?", determines: pricing_model}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Drop the hanging installation and keep the tablescapes?"
+  accept_label: "Drop it"
+  decline_label: "Keep it"
+  accept_line: "Let's skip the hanging installation — what does removing it take off the total?"
+  lever: scope_reduction

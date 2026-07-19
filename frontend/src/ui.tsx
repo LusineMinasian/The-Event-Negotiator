@@ -70,6 +70,27 @@ export function PullMeToast({ vendor, detail, onResolve }: { vendor: string; det
   );
 }
 
+// Mid-call trade-off the agent surfaces so it can bargain on your behalf.
+export function QuestionPrompt({ q, onAnswer }:
+  { q: { vendor_name: string; question: string; options: { key: string; label: string }[] }; onAnswer: (key: string) => void }) {
+  return (
+    <div className="q-prompt" role="dialog" aria-live="polite">
+      <div className="q-prompt-top">
+        <span className="q-prompt-dot" aria-hidden>💬</span>
+        <span className="small">The agent needs your call · <b>{q.vendor_name}</b></span>
+      </div>
+      <div className="q-prompt-q">{q.question}</div>
+      <div className="q-prompt-actions">
+        {q.options.map((o) => (
+          <button key={o.key} className={`btn ${o.key === "accept" ? "" : "ghost"} sm`} onClick={() => onAnswer(o.key)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Spinner({ size = 22 }: { size?: number }) {
   return <span className="spinner" style={{ width: size, height: size }} aria-hidden />;
 }

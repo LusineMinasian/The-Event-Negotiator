@@ -77,6 +77,8 @@ export const api = {
   callDetail: (cid: string, callId: string) => req("GET", `/campaigns/${cid}/calls/${callId}`),
   resolveHandoff: (cid: string, callId: string) =>
     req("POST", `/campaigns/${cid}/calls/${callId}/handoff/resolve`),
+  resolveQuestion: (cid: string, callId: string, answer: string) =>
+    req("POST", `/campaigns/${cid}/calls/${callId}/question/resolve`, { answer }),
   metrics: (id: string) => req("GET", `/campaigns/${id}/metrics`),
   receipt: (id: string) => req("GET", `/campaigns/${id}/receipt`),
   postmortem: (id: string) => req("GET", `/campaigns/${id}/postmortem`),

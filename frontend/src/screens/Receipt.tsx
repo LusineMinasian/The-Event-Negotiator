@@ -4,114 +4,113 @@ import { api } from "../api";
 import { applyTheme } from "../palette";
 import { Loading } from "../ui";
 
-const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
+const SYM: Record<string, string> = { USD: "$", CHF: "CHF ", EUR: "€", AMD: "֏ " };
 
 export default function Receipt() {
   const { campaignId } = useParams();
   const [r, setR] = useState<any>(null);
 
   useEffect(() => {
-    api.receipt(campaignId!).then((d) => {
-      setR(d);
-      applyTheme(d.theme_tokens);
-    });
+    api.receipt(campaignId!).then((d) => { setR(d); applyTheme(d.theme_tokens); });
   }, [campaignId]);
 
   if (!r) return <Loading label="Building the receipt…" />;
 
+  const sym = SYM[r.currency] || "$";
+  const money = (n?: number) => (n == null ? "—" : sym + Math.round(n).toLocaleString());
+
+  const downloadCsv = () => {
+    const rows: (string | number)[][] = [[
+      "Category", "Vendor", "Contact", "Phone", "Rating", "Segment",
+      "Opening", "Negotiated", "Saved", "Change %", "Recommended", "Leverage",
+    ]];
+    Object.entries(r.categories).forEach(([cat, items]: any) =>
+      items.forEach((it: any) => {
+        const saved = Math.round((it.opening_total || 0) - (it.negotiated_subtotal ?? it.total));
+        rows.push([cat, it.vendor, it.contact || "", it.phone || "", it.rating, it.segment_display,
+          Math.round(it.opening_total), Math.round(it.total), saved, it.delta_pct,
+          it.rank === 1 ? "yes" : "no", (it.leverage_used || []).join("; ")]);
+      }));
+    rows.push([]);
+    rows.push(["", "", "", "", "", "RECOMMENDED TOTAL", "", Math.round(r.recommended_total)]);
+    rows.push(["", "", "", "", "", "BUDGET CEILING", "", Math.round(r.budget_ceiling || 0)]);
+    rows.push(["", "", "", "", "", "NEGOTIATED DOWN", "", Math.round(r.savings)]);
+    const csv = rows.map((row) => row.map((c) => {
+      const s = String(c ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    }).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `estimate-${r.event.type}-${r.event.date || "event"}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="container themed">
-      <div className="receipt">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h1>The Receipt</h1>
-          <Link className="btn ghost" to={`/campaign/${campaignId}/postmortem`}>Agent postmortem →</Link>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2" style={{ maxWidth: 560, margin: "0 auto 12px" }}>
+        <span className="section-eyebrow" style={{ margin: 0 }}>Final estimate</span>
+        <div className="flex gap-2">
+          <button className="btn ghost sm" onClick={downloadCsv}>⤓ CSV</button>
+          <Link className="btn ghost sm" to={`/campaign/${campaignId}/postmortem`}>Postmortem →</Link>
+        </div>
+      </div>
+
+      <div className="rcpt">
+        <div className="rcpt-brand">THE&nbsp;NEGOTIATOR</div>
+        <div className="rcpt-meta">
+          {r.event.type.replace("_", " ")} · {r.event.date} · {r.location.city} · {r.event.guest_count} guests
+        </div>
+        <div className="rcpt-meta faint">spec {r.spec_hash} · {Object.keys(r.categories).length} categories</div>
+
+        <div className="rcpt-save">
+          <span>You save</span>
+          <b className="mono">{money(r.savings)}</b>
         </div>
 
-        <div className="savings-hero mt-3">
-          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 blur-2xl" style={{ background: "#fff" }} />
-          <div className="relative flex items-end justify-between flex-wrap gap-4">
-            <div>
-              <div className="text-white/80 text-[11px] uppercase font-bold tracking-widest mb-1">Negotiated off the top</div>
-              <div className="text-[40px] font-extrabold leading-none mono">{money(r.savings)}</div>
-              <div className="text-white/85 text-sm mt-2">
-                Recommended total <b className="mono">{money(r.recommended_total)}</b>
-                {r.budget_ceiling != null && <> · budget <b className="mono">{money(r.budget_ceiling)}</b></>}
-              </div>
-            </div>
-            <div className="flex gap-6">
-              <div>
-                <div className="text-[26px] font-bold mono leading-none">{r.time_ledger.calls}</div>
-                <div className="text-white/80 text-xs mt-1">calls placed</div>
-              </div>
-              <div>
-                <div className="text-[26px] font-bold mono leading-none">{r.time_ledger.phone_time}</div>
-                <div className="text-white/80 text-xs mt-1">phone time saved</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="card pad" style={{ marginTop: 16 }}>
-          <div className="receipt-head">
-            <div style={{ textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
-              {r.event.type.replace("_", " ")} · {r.event.date} · {r.location.city} · {r.event.guest_count} guests
-            </div>
-            <div className="small">spec_hash {r.spec_hash} · {Object.keys(r.categories).length} categories</div>
-          </div>
-
-          {Object.entries(r.categories).map(([cat, items]: any) => (
-            <div key={cat} style={{ marginBottom: 6 }}>
-              <h3 style={{ textTransform: "uppercase", color: "var(--muted)", fontSize: 12, letterSpacing: "0.05em" }}>{cat}</h3>
-              {items.map((it: any, i: number) => (
-                <div key={i} className="receipt-line">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                    <div>
-                      <span style={{ fontWeight: 600 }}>{it.vendor}</span> <span className="small">★{it.rating} ({it.review_count})</span>
-                      {it.rank === 1 && <span className="picked" style={{ marginLeft: 8 }}>recommended</span>}
-                      <div className="small">{it.segment_display}
-                        {it.delta_pct < 0 && <> · <b style={{ color: "var(--good)" }}>{it.delta_pct}%</b> via {it.leverage_used.join(", ")}</>}
-                      </div>
-                      {it.trigger_utterance && <div className="small" style={{ fontStyle: "italic", marginTop: 2 }}>“{it.trigger_utterance}”</div>}
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      {it.negotiated_subtotal !== it.opening_total && (
-                        <span className="small mono" style={{ textDecoration: "line-through", marginRight: 6 }}>{money(it.opening_total)}</span>
-                      )}
-                      <span className="mono" style={{ fontWeight: 700 }}>{money(it.total)}</span>
-                    </div>
-                  </div>
-                  {it.rank === 1 && it.line_items?.map((li: any, j: number) => (
-                    <div className="li-row" key={j}>
-                      <span>{li.label}{li.disclosed_voluntarily === false && <span className="pill harm" style={{ marginLeft: 6 }}>hidden</span>}</span>
-                      <span className="mono">{money(li.amount)}</span>
-                    </div>
-                  ))}
-                  {it.red_flags?.map((f: any, j: number) => (
-                    <div key={j} className={`redflag ${f.severity}`}>⚑ {f.rule.replace(/_/g, " ")}: {f.detail}</div>
-                  ))}
+        {Object.entries(r.categories).map(([cat, items]: any) => (
+          <div key={cat} className="rcpt-catblock">
+            <div className="rcpt-cat">{cat}</div>
+            {items.map((it: any, i: number) => (
+              <div key={i} className={`rcpt-item ${it.rank === 1 ? "pick" : ""}`}>
+                <div className="rcpt-line1">
+                  <span className="rcpt-vname">
+                    {it.vendor}{it.rank === 1 && <span className="rcpt-pick">pick</span>}
+                  </span>
+                  <span className="rcpt-price">
+                    {Math.round(it.negotiated_subtotal) !== Math.round(it.opening_total) && (
+                      <span className="was mono">{money(it.opening_total)}</span>
+                    )}
+                    <span className="now mono">{money(it.total)}</span>
+                  </span>
                 </div>
-              ))}
-            </div>
-          ))}
-
-          <div className="receipt-head" style={{ borderBottom: "none", borderTop: "2px dashed var(--line)", paddingTop: 14, marginTop: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
-              <span>RECOMMENDED TOTAL</span><span className="mono">{money(r.recommended_total)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }} className="small">
-              <span>Budget ceiling</span><span className="mono">{money(r.budget_ceiling)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }} className="small">
-              <span>Negotiated down by</span><span className="mono" style={{ color: "var(--good)" }}>{money(r.savings)}</span>
-            </div>
+                <div className="rcpt-sub">
+                  sold by <b>{it.contact}</b> · ★{it.rating} · {it.segment_display}
+                  {it.delta_pct < 0 && <> · <span className="off">{it.delta_pct}%</span></>}
+                </div>
+                {it.rank === 1 && it.leverage_used?.length > 0 && (
+                  <div className="rcpt-sub faint">levers: {it.leverage_used.join(", ")}</div>
+                )}
+                {it.rank === 1 && it.line_items?.map((li: any, j: number) => (
+                  <div className="rcpt-li" key={j}>
+                    <span>{li.label}{li.disclosed_voluntarily === false && <span className="rcpt-hidden">hidden</span>}</span>
+                    <span className="dots" /><span className="mono">{money(li.amount)}</span>
+                  </div>
+                ))}
+                {it.red_flags?.map((f: any, j: number) => (
+                  <div key={j} className={`rcpt-flag ${f.severity}`}>⚑ {f.rule.replace(/_/g, " ")}: {f.detail}</div>
+                ))}
+              </div>
+            ))}
           </div>
-        </div>
+        ))}
 
-        <div className="grid cols-3" style={{ marginTop: 16 }}>
-          <div className="card pad stat"><span className="n">{r.time_ledger.calls}</span><span className="l">calls placed</span></div>
-          <div className="card pad stat"><span className="n">{r.time_ledger.phone_time}</span><span className="l">phone time saved</span></div>
-          <div className="card pad stat"><span className="n mono">{money(r.savings)}</span><span className="l">negotiated off the top</span></div>
+        <div className="rcpt-total">
+          <div className="rcpt-trow big"><span>RECOMMENDED TOTAL</span><span className="mono">{money(r.recommended_total)}</span></div>
+          <div className="rcpt-trow"><span>Budget ceiling</span><span className="mono">{money(r.budget_ceiling)}</span></div>
+          <div className="rcpt-trow"><span>Negotiated down</span><span className="mono save">−{money(r.savings)}</span></div>
         </div>
+        <div className="rcpt-foot">{r.time_ledger.calls} calls · {r.time_ledger.phone_time} of phone time saved · thank you ✦</div>
       </div>
     </div>
   );

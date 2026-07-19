@@ -1,27 +1,43 @@
 key: baby_shower
 display_name: Baby shower
-planning_horizon_days: [21, 42]
-typical_guest_range: [15, 40]
-required_categories: [venue, catering, decor]
-optional_categories: [photo]
+planning_horizon_days:
+- 21
+- 42
+typical_guest_range:
+- 15
+- 40
+required_categories:
+- venue
+- catering
+- decor
+optional_categories:
+- photo
+- flowers
+- beauty
 required_spec_fields:
-  - event.date
-  - event.guest_count
-  - location.city
-  - budget.total_ceiling
-style_taxonomy: [palette, density, theme, balloon_arch, table_setting]
+- event.date
+- event.guest_count
+- location.city
+- budget.total_ceiling
+style_taxonomy:
+- palette
+- density
+- theme
+- balloon_arch
+- table_setting
 palette_extraction: enabled
 interview_tone: warm_efficient
 default_ranking_weights:
   price: 0.45
   completeness: 0.25
-  risk: 0.20
-  reputation: 0.10
+  risk: 0.2
+  reputation: 0.1
 base_levers:
-  - daytime_slot
-  - weekday_slot
-  - fee_challenge
-  - competing_bid
-  - relationship
+- daytime_slot
+- weekday_slot
+- fee_challenge
+- competing_bid
+- relationship
 base_levers_harmful:
-  - {key: volume, reason: "Small format: mentioning volume gives a reason to raise the per-guest price"}
+- key: volume
+  reason: 'Small format: mentioning volume gives a reason to raise the per-guest price'

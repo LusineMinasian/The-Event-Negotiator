@@ -1,0 +1,31 @@
+key: beauty__salon_team
+parent_category: beauty
+display_name: Salon team
+applicable_events: [wedding, baby_shower, birthday]
+guest_range: [10, 300]
+economics:
+  cost_structure: {labor: 0.70, products: 0.15, overhead: 0.15}
+  bottleneck: artist_time
+  capacity_perishable: true
+  min_order_exists: true
+  min_order_value: 600
+  decision_maker: manager
+  pricing_model: per_event
+  margin_flexibility: medium
+levers:
+  - {key: weekday_slot, weight: 0.70}
+  - {key: volume, weight: 0.65}
+  - {key: bundle, weight: 0.55}
+  - {key: off_season, weight: 0.45}
+levers_harmful:
+  - {key: relationship, reason: "A salon rep can't grant off-book discounts"}
+resistance_profile:
+  opening_markup_expected: 0.15
+  typical_concession_ceiling: 0.14
+  hard_floor_signal: "artist day rate"
+  stonewall_probability: 0.20
+  upsell_probability: 0.45
+counterparty:
+  style: hard
+  hidden_fees: [{label: "Early-start surcharge (before 7am)", amount: 120, unit: per_event, disclosed_voluntarily: false}]
+benchmark_key: beauty_salon_team_{region_profile}

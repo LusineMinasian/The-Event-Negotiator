@@ -3,12 +3,13 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { clearTheme } from "../palette";
 import { useCampaignSocket, WsEvent } from "../ws";
-import { PullMeToast } from "../ui";
+import { PullMeToast, QuestionPrompt } from "../ui";
 import CallDrawer from "./CallDrawer";
+import AgentInfo from "./AgentInfo";
 
 type Call = {
   call_id: string; vendor_name: string; category: string; phase: string; status: string;
-  outcome?: string; segment_display: string; style?: string; last_line: string;
+  outcome?: string; segment_display: string; segment_key?: string; style?: string; last_line: string;
   rating: number; review_count: number; opening?: number; total?: number;
 };
 
@@ -21,6 +22,7 @@ export default function WarRoom() {
   const [budget, setBudget] = useState<any>(null);
   const [status, setStatus] = useState("running");
   const [handoff, setHandoff] = useState<any>(null);
+  const [question, setQuestion] = useState<any>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [liveUtterance, setLiveUtterance] = useState<{ call_id: string; text: string; speaker: string } | null>(null);
   const tid = useRef(0);
@@ -33,7 +35,7 @@ export default function WarRoom() {
       case "call.initiated":
         setCalls((c) => ({ ...c, [p.call_id]: {
           call_id: p.call_id, vendor_name: p.vendor_name, category: p.category, phase: "dialing",
-          status: "in_progress", segment_display: p.segment_display, style: p.style,
+          status: "in_progress", segment_display: p.segment_display, segment_key: p.segment_key, style: p.style,
           last_line: "", rating: p.rating, review_count: p.review_count } }));
         break;
       case "call.phase":
@@ -56,7 +58,7 @@ export default function WarRoom() {
           to: p.to_total, delta: p.delta_pct, leverage: p.leverage }, ...t].slice(0, 40));
         break;
       case "segment.reclassified":
-        setCalls((c) => c[p.call_id] ? { ...c, [p.call_id]: { ...c[p.call_id], segment_display: p.segment_display } } : c);
+        setCalls((c) => c[p.call_id] ? { ...c, [p.call_id]: { ...c[p.call_id], segment_display: p.segment_display, segment_key: p.to_segment } } : c);
         setTicker((t) => [{ id: tid.current++, kind: "reclass", vendor: calls[p.call_id]?.vendor_name, note: p.note, seg: p.segment_display }, ...t].slice(0, 40));
         break;
       case "call.ended":
@@ -67,6 +69,12 @@ export default function WarRoom() {
         break;
       case "handoff.resolved":
         setHandoff(null);
+        break;
+      case "question.asked":
+        setQuestion(p);
+        break;
+      case "question.resolved":
+        setQuestion(null);
         break;
       case "campaign.completed":
         setBudget(p.budget);
@@ -80,6 +88,10 @@ export default function WarRoom() {
   const resolveHandoff = async () => {
     if (handoff) await api.resolveHandoff(campaignId!, handoff.call_id);
     setHandoff(null);
+  };
+  const answerQuestion = async (key: string) => {
+    const q = question; setQuestion(null);
+    if (q) { try { await api.resolveQuestion(campaignId!, q.call_id, key); } catch { /* noop */ } }
   };
 
   const callList = Object.values(calls);
@@ -114,7 +126,10 @@ export default function WarRoom() {
                         <div style={{ fontWeight: 600 }}>{c.vendor_name}</div>
                         <span className="seg-tag">{c.segment_display}</span>
                       </div>
-                      {c.style && <span className={`style-tag style-${c.style}`}>{c.style}</span>}
+                      <span className="flex items-center gap-1.5">
+                        {c.style && <span className={`style-tag style-${c.style}`}>{c.style}</span>}
+                        <AgentInfo segmentKey={c.segment_key} style={c.style} />
+                      </span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
                       <span className="phase-badge">{c.status === "completed" ? (c.outcome || "done") : c.phase}</span>
@@ -165,6 +180,7 @@ export default function WarRoom() {
       </div>
 
       {handoff && <PullMeToast vendor={handoff.vendor_name} detail={handoff.detail} onResolve={resolveHandoff} />}
+      {question && <QuestionPrompt q={question} onAnswer={answerQuestion} />}
 
       {selected && (
         <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}

@@ -22,3 +22,11 @@ call_objectives:
   - "Surface travel and extra-hour fees"
 diagnostic_questions:
   - {q: "Do you work solo, or is it a studio with a team?", determines: decision_maker}
+
+# Interactive trade-off the agent surfaces to the user mid-call to bargain on their behalf.
+tradeoff:
+  question: "Trim coverage from 8 hours to 6?"
+  accept_label: "6h is enough"
+  decline_label: "Keep 8h"
+  accept_line: "We can do six hours instead of eight — what's the rate for the shorter day?"
+  lever: scope_reduction
