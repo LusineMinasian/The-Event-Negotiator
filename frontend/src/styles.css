@@ -192,6 +192,42 @@
   .pipe-t { @apply font-semibold text-[15px]; }
   .pipe-via { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
+  /* Agent interaction flow — who's on the line at each step */
+  .agent-flow { @apply flex flex-wrap items-stretch gap-2 mt-4; }
+  .flow-node { @apply flex-1 rounded-xl p-3 text-center; min-width: 120px; border: 1px solid var(--line); background: var(--surface); }
+  .flow-ic { font-size: 22px; line-height: 1; margin-bottom: 6px; }
+  .flow-t { @apply font-bold text-[13px]; }
+  .flow-d { margin-top: 2px; }
+  .flow-arrow { @apply grid place-items-center shrink-0 font-bold; color: var(--muted); }
+  .flow-branches { @apply flex flex-wrap gap-2 mt-3; }
+  .flow-branch { @apply text-[12px] px-[10px] py-[6px] rounded-lg; background: #f2ecfb; color: var(--ink-2); }
+  .flow-branch.warn { background: #fff3e2; color: #b26a06; }
+  @media (max-width: 620px) {
+    .agent-flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+
+  /* Who takes the call — situation → handler */
+  .who-list { @apply grid gap-2 mt-4; }
+  .who-row { @apply flex items-center justify-between gap-3 flex-wrap px-[14px] py-[10px] rounded-xl;
+    border: 1px solid var(--line); background: var(--surface); }
+  .who-sit { @apply text-[14px]; min-width: 0; }
+  .who-agent { @apply text-[12px] font-semibold px-[10px] py-[4px] rounded-full shrink-0; background: #f2ecfb; color: var(--ink-2); }
+  .who-agent.brand { background: #ede4fb; color: var(--brand); }
+  .who-agent.warn { background: #fff3e2; color: #b26a06; }
+
+  /* Counterparty style cards */
+  .cp-head { @apply flex items-center gap-[10px] mb-2; }
+  .cp-badge { @apply grid place-items-center font-bold rounded-[9px]; width: 30px; height: 30px; font-size: 14px; color: #fff; }
+  .cp-flexible { background: #2fb37a; }
+  .cp-lowballer { background: #e0913a; }
+  .cp-upseller { background: #7c5cff; }
+  .cp-hard { background: #d0435a; }
+  .cp-stonewaller { background: #5a6b8c; }
+  .cp-levers { @apply flex flex-wrap gap-[6px]; }
+  .keycap.good { background: #e7f7f0; color: var(--good); border-color: #bfe6d2; }
+  .keycap.bad { background: #fdecec; color: var(--bad); border-color: #f2c4c0; }
+
   /* agent cards (links to the ElevenLabs Convai agents) */
   .agent-tools { @apply flex flex-wrap gap-[6px] mb-3; }
   .agent-foot { @apply flex items-center justify-between gap-2 pt-3; border-top: 1px solid var(--line); }

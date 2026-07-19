@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 
 const FEATURES = [
-  { icon: "📞", title: "A fleet that calls for you", body: "Voice agents phone the whole vendor market in parallel." },
-  { icon: "🤝", title: "Negotiates with real leverage", body: "Competing bids, weekday slots and bundles — used only when verified." },
-  { icon: "🧾", title: "Hands you a ranked receipt", body: "Evidence-backed quotes, red flags surfaced, best pick per category." },
+  { icon: "📞", title: "We call", body: "Meet the first AI extrovert that handles all the communication." },
+  { icon: "🤝", title: "We negotiate", body: "Don't bother with uncomfortable bargains and negotiations — just provide your budget." },
+  { icon: "🧾", title: "We report", body: "Get all the data about the organizing process in real time on your dashboard." },
 ];
 
 export default function Login() {
@@ -45,9 +45,9 @@ export default function Login() {
           SayWhen
         </div>
         <div className="relative">
-          <span className="section-eyebrow" style={{ background: "rgba(255,255,255,0.7)" }}>Voice negotiation</span>
+          <span className="section-eyebrow" style={{ background: "rgba(255,255,255,0.7)" }}>AI event organizer</span>
           <h1 className="text-[40px] leading-[1.05] font-extrabold tracking-tight max-w-md" style={{ color: "var(--ink)" }}>
-            Your voice agents call the market and haggle for your event.
+            Focus on your celebration, let AI handle the rest.
           </h1>
           <div className="mt-8 grid gap-3 max-w-md">
             {FEATURES.map((f) => (

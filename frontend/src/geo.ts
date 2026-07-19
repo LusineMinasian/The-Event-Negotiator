@@ -67,6 +67,22 @@ export function detectCountry(): string {
   return "US";
 }
 
+// Scan free text for any known city (longest match wins, so "San Francisco" beats
+// "San") and return it with its country code — lets the voice intake fill location.
+export function detectCityInText(text: string): { code: string; city: string } | null {
+  const t = " " + text.toLowerCase() + " ";
+  let best: { code: string; city: string } | null = null;
+  for (const [code, cities] of Object.entries(CITIES)) {
+    for (const city of cities) {
+      const esc = city.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp(`\\b${esc}\\b`).test(t) && (!best || city.length > best.city.length)) {
+        best = { code, city };
+      }
+    }
+  }
+  return best;
+}
+
 export function citiesFor(code: string): string[] {
   return CITIES[code] || [];
 }

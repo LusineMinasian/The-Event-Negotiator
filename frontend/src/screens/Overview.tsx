@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { api } from "../api";
 import { clearTheme } from "../palette";
 import KeysPanel from "./KeysPanel";
@@ -24,6 +24,34 @@ const AGENTS = [
     what: "Places each vendor call. Quotes and counters using only verified levers, logs every price move, flags hidden fees, reclassifies on new signals and requests a human handoff when a category budget is breached.",
     tools: ["/leverage", "/quote", "/price-move", "/red-flags", "/reclassify", "/handoff"],
   },
+];
+
+// The call lifecycle as a left-to-right flow of who's on the line at each step.
+const FLOW = [
+  { icon: "🙋", t: "You", d: "describe the event by voice" },
+  { icon: "🎙️", t: "Intake Agent", d: "runs the brief, writes the spec" },
+  { icon: "📋", t: "Job spec", d: "frozen & hashed" },
+  { icon: "📞", t: "Negotiation Agent", d: "dials each vendor, haggles" },
+  { icon: "🏪", t: "Vendor", d: "answers in one of 5 styles" },
+];
+
+// Situation → who is on the call. tone drives the pill colour.
+const WHO = [
+  { sit: "Talk through the event and build the brief", who: "Intake Agent", tone: "brand" },
+  { sit: "Cold outbound call to a vendor", who: "Negotiation Agent", tone: "brand" },
+  { sit: "The voice on the other end of the line", who: "Counterparty style (sim) · real vendor (live)", tone: "" },
+  { sit: "Vendor won't give a number / stonewalls", who: "Negotiation Agent — asks for a weekday range", tone: "brand" },
+  { sit: "Quote crosses the category budget", who: "You — “Pull Me In” handoff", tone: "warn" },
+  { sit: "Vendor reveals they're a solo operator", who: "Negotiation Agent — reclassifies, switches levers", tone: "brand" },
+];
+
+// The 5 deterministic vendor personalities the caller has to read and adapt to.
+const COUNTERPARTIES = [
+  { key: "flexible", tag: "Flexible", d: "Gives ground to genuine reasons — especially relationship and repeat business. Often a solo operator who reveals themselves mid-call, cueing a reclassify.", win: "relationship", never: "" },
+  { key: "lowballer", tag: "Lowballer", d: "The headline looks cheap, but it's a mirage — the real total is the sticker plus setup and service fees that only surface when you ask.", win: "fee challenge", never: "" },
+  { key: "upseller", tag: "Upseller", d: "Would rather add than discount — answers a price question with an upgrade, and bundles fees into “packages.”", win: "scope trim", never: "" },
+  { key: "hard", tag: "Hard", d: "Firm. Moves only to levers that lower their cost or fill a gap — a weekday slot, a real competing bid. Concedes a slice, never the room.", win: "competing bid", never: "volume · urgency" },
+  { key: "stonewaller", tag: "Stonewaller", d: "Won't quote at first, then cracks — but only to genuine leverage, and less than the others.", win: "weekday slot", never: "" },
 ];
 
 const INTEGRATIONS = [
@@ -123,6 +151,59 @@ export default function Overview() {
                 </div>
               );
             })}
+          </div>
+
+          <h2 style={{ marginTop: 34 }}>How they work together</h2>
+          <p className="small" style={{ maxWidth: 620, marginTop: -4, marginBottom: 4 }}>
+            One voice agent builds the brief; another works the phones. On every vendor call the
+            negotiation agent leads, and hands back to you only when a price crosses your budget.
+          </p>
+          <div className="agent-flow">
+            {FLOW.map((f, i) => (
+              <Fragment key={f.t}>
+                <div className="flow-node">
+                  <div className="flow-ic">{f.icon}</div>
+                  <div className="flow-t">{f.t}</div>
+                  <div className="flow-d small">{f.d}</div>
+                </div>
+                {i < FLOW.length - 1 && <div className="flow-arrow">→</div>}
+              </Fragment>
+            ))}
+          </div>
+          <div className="flow-branches">
+            <span className="flow-branch warn">↳ budget breach → <b>You</b> (Pull Me In)</span>
+            <span className="flow-branch">↳ vendor reveal → <b>reclassify</b> → fresh levers</span>
+          </div>
+
+          <h3 style={{ marginTop: 24 }}>Who takes the call — and when</h3>
+          <div className="who-list">
+            {WHO.map((w) => (
+              <div key={w.sit} className="who-row">
+                <span className="who-sit">{w.sit}</span>
+                <span className={`who-agent ${w.tone}`}>{w.who}</span>
+              </div>
+            ))}
+          </div>
+
+          <h3 style={{ marginTop: 24 }}>The other side of the line — 5 counterparty styles</h3>
+          <p className="small" style={{ maxWidth: 620, marginTop: -4, marginBottom: 4 }}>
+            In simulation these deterministic personalities play the vendor; live, a real vendor answers.
+            Each rewards different leverage — reading which is the caller's whole job.
+          </p>
+          <div className="ov-grid">
+            {COUNTERPARTIES.map((c) => (
+              <div key={c.key} className="card pad cp-card">
+                <div className="cp-head">
+                  <span className={`cp-badge cp-${c.key}`}>{c.tag[0]}</span>
+                  <h3 style={{ margin: 0 }}>{c.tag}</h3>
+                </div>
+                <p className="integration-what">{c.d}</p>
+                <div className="cp-levers">
+                  <span className="keycap good">moves to · {c.win}</span>
+                  {c.never && <span className="keycap bad">never · {c.never}</span>}
+                </div>
+              </div>
+            ))}
           </div>
 
           <h2 style={{ marginTop: 34 }}>Integrations</h2>

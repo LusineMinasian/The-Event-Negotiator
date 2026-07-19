@@ -82,6 +82,53 @@ export function detectGuests(text: string): number | null {
   return null;
 }
 
+const MONTH_MAP: Record<string, number> = {
+  january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2, april: 3, apr: 3, may: 4,
+  june: 5, jun: 5, july: 6, jul: 6, august: 7, aug: 7, september: 8, sep: 8, sept: 8,
+  october: 9, oct: 9, november: 10, nov: 10, december: 11, dec: 11,
+};
+
+// Parse a spoken/typed date into an ISO YYYY-MM-DD. Handles explicit dates,
+// "12 September", "September 12th 2026", "next June", "in 3 weeks", "tomorrow".
+// A month with no year resolves to the next future occurrence. Returns null if nothing found.
+export function detectDate(text: string): string | null {
+  const t = norm(text);
+  const now = new Date();
+  const iso = (d: Date) => (isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10));
+  const build = (mon: number, day: number, year?: number): string | null => {
+    let d = new Date(year ?? now.getFullYear(), mon, day);
+    if (year === undefined && d.getTime() < now.getTime() - 86_400_000) d = new Date(now.getFullYear() + 1, mon, day);
+    return iso(d);
+  };
+  const names = Object.keys(MONTH_MAP).join("|");
+
+  // explicit ISO
+  let m = t.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  if (m) return build(+m[2] - 1, +m[3], +m[1]);
+  // "12 [of] september [2026]"
+  m = t.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${names})\\b(?:[,\\s]+(20\\d{2}))?`));
+  if (m) return build(MONTH_MAP[m[2]], +m[1], m[3] ? +m[3] : undefined);
+  // "september 12[th] [2026]"
+  m = t.match(new RegExp(`\\b(${names})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:[,\\s]+(20\\d{2}))?`));
+  if (m) return build(MONTH_MAP[m[1]], +m[2], m[3] ? +m[3] : undefined);
+  // "in/on/by/for/next <month>" (no day) → 1st of the next occurrence
+  m = t.match(new RegExp(`\\b(?:in|on|by|for|next)\\s+(${names})\\b`));
+  if (m) return build(MONTH_MAP[m[1]], 1);
+  // relative offsets
+  m = t.match(/\bin\s+(\d{1,2})\s+(day|days|week|weeks|month|months)\b/);
+  if (m) {
+    const n = +m[1]; const d = new Date(now);
+    if (m[2].startsWith("day")) d.setDate(d.getDate() + n);
+    else if (m[2].startsWith("week")) d.setDate(d.getDate() + n * 7);
+    else d.setMonth(d.getMonth() + n);
+    return iso(d);
+  }
+  if (/\bnext\s+week\b/.test(t)) { const d = new Date(now); d.setDate(d.getDate() + 7); return iso(d); }
+  if (/\bnext\s+month\b/.test(t)) { const d = new Date(now); d.setMonth(d.getMonth() + 1); return iso(d); }
+  if (/\btomorrow\b/.test(t)) { const d = new Date(now); d.setDate(d.getDate() + 1); return iso(d); }
+  return null;
+}
+
 export function detectVibeWords(text: string): string[] {
   const t = norm(text);
   const out: string[] = [];

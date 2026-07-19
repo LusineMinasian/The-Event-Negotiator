@@ -4,10 +4,10 @@ import { api } from "../api";
 import { applyTheme, clearTheme } from "../palette";
 import { useSpeechRecognition, useElevenLabsAgent } from "../speech";
 import {
-  detectColors, detectEventType, detectGuests, detectVibeWords, extractKeywords,
+  detectColors, detectEventType, detectGuests, detectDate, detectVibeWords, extractKeywords,
   buildThemeTokens, readableText, imageColors,
 } from "../vibe";
-import { COUNTRIES, countryByCode, citiesFor, detectCountry } from "../geo";
+import { COUNTRIES, countryByCode, citiesFor, detectCountry, detectCityInText } from "../geo";
 
 const TYPES = [
   { key: "wedding", emoji: "💍", blurb: "Venue, catering, florals & more", guests: 80, perGuest: 320 },
@@ -19,7 +19,7 @@ const TYPES = [
 ];
 // per-type budget ceiling for the slider (in USD base, scaled by currency)
 const BUDGET_MAX: Record<string, number> = { wedding: 120000, concert: 120000, hackathon: 80000, public_speaking: 80000 };
-const STEPS = ["Event", "Vibe", "Details", "Budget"];
+const STEPS = ["Event", "Vibe", "Budget"];
 const GUEST_PRESETS = [25, 50, 100, 150, 200];
 const EXAMPLES = [
   "A rustic garden wedding, sage green and blush, 120 guests",
@@ -112,6 +112,18 @@ export default function CreateEvent() {
     transcript.current.push(text);
     const ev = detectEventType(text); if (ev && !type) setType(ev);
     const g = detectGuests(text); if (g) { setGuests(g); addBubble({ kind: "guests", label: `${g} guests` }); }
+    // pull when & where straight from the conversation — no manual screen
+    const dt = detectDate(text); if (dt) { setDate(dt); addBubble({ kind: "date", label: dt }); }
+    const loc = detectCityInText(text);
+    if (loc) {
+      setCity(loc.city);
+      if (loc.code !== country) {
+        const oldScale = countryByCode(country).scale, ns = countryByCode(loc.code).scale;
+        if (ns !== oldScale) setBudget((b) => Math.round(b * ns / oldScale / 500) * 500);
+        setCountry(loc.code);
+      }
+      addBubble({ kind: "city", label: loc.city });
+    }
     const cols = detectColors(text);
     cols.forEach((c) => addBubble({ kind: "color", label: c.name, hex: c.hex }));
     if (cols.length) addColors(cols.map((c) => c.hex));
@@ -313,6 +325,8 @@ export default function CreateEvent() {
                       <span key={b.id} className={`bubble ${b.kind === "color" ? "color" : b.kind === "source" ? "source" : ""}`}
                             style={b.hex ? { background: b.hex, color: readableText(b.hex) } : undefined}>
                         {b.kind === "source" && <span aria-hidden>📌</span>}
+                        {b.kind === "date" && <span aria-hidden>📅&nbsp;</span>}
+                        {b.kind === "city" && <span aria-hidden>📍&nbsp;</span>}
                         {b.kind === "keyword" && <span style={{ opacity: 0.5 }}>#</span>}
                         {b.label}<span className="x" onClick={() => removeBubble(b.id)}>×</span>
                       </span>
