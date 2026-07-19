@@ -169,6 +169,7 @@
   .keys-group-title { @apply text-[11px] uppercase font-bold mb-3; letter-spacing: 0.05em; color: var(--muted); }
   .keys-panel .field-input input { @apply text-[13px] py-[9px]; }
   .keys-import-msg { @apply rounded-lg px-3 py-2 mb-3; background: #f1eafb; color: var(--brand); font-weight: 600; }
+  .test-call { @apply mt-3 pt-3; border-top: 1px solid var(--line); }
 
   /* Overview (README + keys) two-column page */
   .overview-cols { @apply grid gap-6 items-start; grid-template-columns: minmax(0, 1fr) 360px; }

@@ -104,6 +104,18 @@ export default function KeysPanel() {
     setImportMsg(`Imported ${n} key${n > 1 ? "s" : ""} — review and Save.`);
   };
 
+  const testCall = async () => {
+    setTesting(true); setTestMsg("");
+    try {
+      const r = await api.testCall();
+      setTestMsg(r.ok
+        ? "✓ Call placed — your phone should ring in a few seconds. If it doesn't, check that this ElevenLabs phone number is a live Twilio number."
+        : "✕ " + (r.error || `HTTP ${r.status || "error"}`));
+    } catch (e: any) {
+      setTestMsg("✕ " + (e?.message || "request failed"));
+    } finally { setTesting(false); }
+  };
+
   const fields = data?.fields || [];
   const canLive = !!(data?.live_calls_available || data?.demo_call_available);
 
@@ -177,6 +189,19 @@ export default function KeysPanel() {
           </div>
         );
       })}
+
+      {data?.demo_call_available && (
+        <div className="test-call">
+          <button className="btn ghost sm" onClick={testCall} disabled={testing}>
+            {testing ? <Spinner size={13} /> : "📞"} Test call to my phone
+          </button>
+          {testMsg && (
+            <div className="small" style={{ marginTop: 8, color: testMsg.startsWith("✓") ? "var(--good)" : "var(--bad)" }}>
+              {testMsg}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="save-bar">
         {saved && <span className="small" style={{ color: "var(--good)" }}>✓ Active now</span>}
