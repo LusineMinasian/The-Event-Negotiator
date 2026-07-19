@@ -1,7 +1,7 @@
 key: venue__dedicated
 parent_category: venue
 display_name: Dedicated venue
-applicable_events: [wedding]
+applicable_events: [wedding, hackathon, public_speaking, concert]
 guest_range: [40, 300]
 economics:
   cost_structure: {rental: 0.70, staff: 0.15, overhead: 0.15}

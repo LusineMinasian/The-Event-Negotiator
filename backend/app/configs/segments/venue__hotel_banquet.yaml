@@ -1,7 +1,7 @@
 key: venue__hotel_banquet
 parent_category: venue
 display_name: Hotel banquet
-applicable_events: [wedding]
+applicable_events: [wedding, hackathon, public_speaking, concert]
 guest_range: [50, 400]
 economics:
   cost_structure: {rental: 0.30, fnb: 0.50, overhead: 0.20}

@@ -61,7 +61,30 @@ export default function KeysPanel() {
     try {
       const d = await api.saveSettingsKeys({ values: vals, call_mode: mode });
       setData(d); setMode(d.call_mode); setVals({}); setSaved(true); setImportMsg("");
+      // let the top-bar chip reflect the new call mode instantly
+      window.dispatchEvent(new CustomEvent("en:call-mode", {
+        detail: { call_mode: d.call_mode, live: !!(d.live_calls_available || d.demo_call_available) },
+      }));
     } finally { setSaving(false); }
+  };
+
+  // Export a CSV of the current keys (KEY,VALUE + CALL_MODE). Secret values are
+  // never stored in the clear, so they export blank unless just typed here.
+  const exportCsv = () => {
+    const cell = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+    const rows: string[][] = [["KEY", "VALUE"]];
+    (data?.fields || []).forEach((f) => {
+      const v = f.key in vals ? vals[f.key] : (f.secret ? "" : f.preview);
+      rows.push([f.key.toUpperCase(), v || ""]);
+    });
+    rows.push(["CALL_MODE", mode]);
+    const csv = rows.map((r) => r.map(cell).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "event-negotiator-keys.csv"; a.click();
+    URL.revokeObjectURL(url);
+    setImportMsg("Exported CSV — secret keys are blank (never stored in the clear).");
   };
 
   // Import a .env / CSV: match ENV names to our fields and stage the values for review.
@@ -93,6 +116,7 @@ export default function KeysPanel() {
           <input ref={fileRef} type="file" accept=".env,.csv,.txt,text/plain" style={{ display: "none" }}
                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ""; }} />
           <button className="btn ghost sm" onClick={() => fileRef.current?.click()} title="Import a .env or CSV file">⤵ Import</button>
+          <button className="btn ghost sm" onClick={exportCsv} disabled={busy} title="Download keys as CSV">⤴ Export</button>
           <button className="btn ghost sm" onClick={load} disabled={busy} aria-label="Reload">
             {busy ? <Spinner size={13} /> : "↻"}
           </button>

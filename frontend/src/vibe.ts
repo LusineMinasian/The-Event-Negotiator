@@ -35,6 +35,9 @@ const EVENT_KEYWORDS: Record<string, string[]> = {
   wedding: ["wedding", "marry", "married", "bride", "groom", "engagement"],
   birthday: ["birthday", "bday", "turning", "birth day"],
   baby_shower: ["baby shower", "baby-shower", "gender reveal", "newborn", "baby"],
+  hackathon: ["hackathon", "hack day", "hackfest", "devfest", "coding event", "makeathon"],
+  public_speaking: ["public speaking", "conference", "keynote", "seminar", "summit", "meetup", "panel", "lecture", "talk"],
+  concert: ["concert", "gig", "live music", "music festival", "live band show"],
 };
 
 const STOP = new Set([

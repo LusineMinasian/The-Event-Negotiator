@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { clearTheme } from "../palette";
 
-const EMOJI: Record<string, string> = { wedding: "💍", birthday: "🎂", baby_shower: "🍼" };
+const EMOJI: Record<string, string> = { wedding: "💍", birthday: "🎂", baby_shower: "🍼", hackathon: "💻", public_speaking: "🎤", concert: "🎶" };
 
 export default function Dashboard() {
   const [events, setEvents] = useState<any[]>([]);

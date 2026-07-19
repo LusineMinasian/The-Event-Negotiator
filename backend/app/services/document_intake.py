@@ -73,7 +73,7 @@ def _png_metadata(image_bytes: bytes) -> dict | None:
 
 def _anthropic_vision(image_bytes: bytes) -> dict | None:
     prompt = ("Read this event planning brief and return ONLY minified JSON with keys: "
-              "event_type (wedding|birthday|baby_shower), date (YYYY-MM-DD), guest_count (int), "
+              "event_type (wedding|birthday|baby_shower|hackathon|public_speaking|concert), date (YYYY-MM-DD), guest_count (int), "
               "city, country_code (US|CA|CH|DE|AT|AM), budget (int, digits only), currency, "
               "categories (array), colors (array of hex), keywords (array). Unknown → null.")
     try:

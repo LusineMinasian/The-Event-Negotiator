@@ -1,7 +1,7 @@
 key: venue__cafe_private
 parent_category: venue
 display_name: Cafe with private area
-applicable_events: [baby_shower, birthday]
+applicable_events: [baby_shower, birthday, public_speaking]
 guest_range: [10, 40]
 economics:
   cost_structure: {fnb: 0.70, staff: 0.20, overhead: 0.10}

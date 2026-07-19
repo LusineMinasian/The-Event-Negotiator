@@ -1,7 +1,7 @@
 key: catering__full_service
 parent_category: catering
 display_name: Full-service catering
-applicable_events: [wedding, baby_shower]
+applicable_events: [wedding, baby_shower, hackathon, concert]
 guest_range: [40, 400]
 economics:
   cost_structure: {food: 0.45, labor: 0.35, overhead: 0.20}

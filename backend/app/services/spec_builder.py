@@ -47,7 +47,8 @@ def _default_allocation(cats: list[str]) -> dict:
 
 
 def _default_budget(event_type: str, guests: int) -> int:
-    per_guest = {"wedding": 400, "birthday": 120, "baby_shower": 150}.get(event_type, 150)
+    per_guest = {"wedding": 400, "birthday": 120, "baby_shower": 150,
+                 "hackathon": 90, "public_speaking": 110, "concert": 130}.get(event_type, 150)
     return int(round(per_guest * guests / 100.0)) * 100
 
 

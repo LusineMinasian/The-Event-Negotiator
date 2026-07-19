@@ -1,0 +1,31 @@
+key: public_speaking
+display_name: Public Speaking
+planning_horizon_days:
+- 14
+- 60
+typical_guest_range:
+- 30
+- 250
+required_categories:
+- venue
+optional_categories:
+- catering
+- photo
+- music
+style_taxonomy:
+- palette
+- density
+- theme
+palette_extraction: enabled
+interview_tone: formal_consultative
+default_ranking_weights:
+  price: 0.45
+  completeness: 0.25
+  risk: 0.2
+  reputation: 0.1
+base_levers:
+- weekday_slot
+- daytime_slot
+- competing_bid
+- scope_reduction
+base_levers_harmful: []

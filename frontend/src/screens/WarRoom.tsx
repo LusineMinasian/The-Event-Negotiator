@@ -85,10 +85,19 @@ export default function WarRoom() {
         setBudget(p.budget);
         setStatus("completed");
         break;
+      case "campaign.stopped":
+        setStatus("stopped");
+        break;
     }
   };
 
   const { connected } = useCampaignSocket(campaignId!, handle);
+
+  const stopCalls = async () => {
+    if (!window.confirm("Stop all calls now? In-flight simulated calls end at their next step.")) return;
+    setStatus("stopped");
+    try { await api.stopCampaign(campaignId!); } catch { /* noop */ }
+  };
 
   const resolveHandoff = async () => {
     if (handoff) await api.resolveHandoff(campaignId!, handoff.call_id);
@@ -112,8 +121,12 @@ export default function WarRoom() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <span className={`chip ${connected ? "live" : "sim"}`}>{connected ? "● connected" : "○ connecting"}</span>
+          {status !== "completed" && status !== "stopped" && (
+            <button className="btn sm" style={{ background: "var(--bad)" }} onClick={stopCalls}>⏹ Stop calls</button>
+          )}
+          {status === "stopped" && <span className="chip sim">● stopped</span>}
           <Link className="btn ghost sm" to={`/campaign/${campaignId}/live`}>← Dashboard</Link>
-          {status === "completed" && <Link className="btn" to={`/campaign/${campaignId}/receipt`}>View receipt →</Link>}
+          {(status === "completed" || status === "stopped") && <Link className="btn" to={`/campaign/${campaignId}/receipt`}>View receipt →</Link>}
         </div>
       </div>
 

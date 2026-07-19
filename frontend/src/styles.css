@@ -161,7 +161,7 @@
   .seg-toggle button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* reusable "bring your own keys" panel */
-  .keys-head { @apply flex items-start justify-between gap-3 mb-3; }
+  .keys-head { @apply flex items-start justify-between gap-3 mb-3 flex-wrap; }
   .keys-status { @apply flex items-center gap-[10px] text-[13px] rounded-xl px-3 py-[10px] mb-3; border: 1px solid var(--line); }
   .keys-status.ok { background: #eaf8f0; border-color: #bfe8d1; }
   .keys-status.sim { background: #fff6e9; border-color: #f2ddb8; }

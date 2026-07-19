@@ -13,7 +13,12 @@ const TYPES = [
   { key: "wedding", emoji: "💍", blurb: "Venue, catering, florals & more", guests: 80, perGuest: 320 },
   { key: "birthday", emoji: "🎂", blurb: "Party space, food, cake, music", guests: 30, perGuest: 90 },
   { key: "baby_shower", emoji: "🍼", blurb: "Cozy venue, catering, décor", guests: 25, perGuest: 70 },
+  { key: "hackathon", emoji: "💻", blurb: "Venue, catering, photo & swag", guests: 150, perGuest: 90 },
+  { key: "public_speaking", emoji: "🎤", blurb: "Hall, seating, AV & catering", guests: 120, perGuest: 110 },
+  { key: "concert", emoji: "🎶", blurb: "Stage, sound, crew & security", guests: 250, perGuest: 130 },
 ];
+// per-type budget ceiling for the slider (in USD base, scaled by currency)
+const BUDGET_MAX: Record<string, number> = { wedding: 120000, concert: 120000, hackathon: 80000, public_speaking: 80000 };
 const STEPS = ["Event", "Vibe", "Details", "Budget"];
 const GUEST_PRESETS = [25, 50, 100, 150, 200];
 const EXAMPLES = [
@@ -436,7 +441,7 @@ export default function CreateEvent() {
               <div className="budget-display">{money(budget)}</div>
               <div className="small" style={{ textAlign: "center", marginBottom: 18 }}>≈ {money(perGuest)} per guest · {guests} guests</div>
               <input type="range" className="range" min={1000 * cur.scale}
-                     max={(type === "wedding" ? 120000 : 40000) * cur.scale} step={500 * cur.scale}
+                     max={(BUDGET_MAX[type] || 40000) * cur.scale} step={500 * cur.scale}
                      value={budget} onChange={(e) => setBudget(+e.target.value)} />
               <div className="wiz-review">
                 <div className="rev-row"><span>Event</span><b className="capitalize">{type.replace("_", " ") || "—"}</b></div>

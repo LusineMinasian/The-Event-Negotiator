@@ -1,7 +1,7 @@
 key: venue__studio_space
 parent_category: venue
 display_name: Studio space
-applicable_events: [baby_shower, birthday]
+applicable_events: [baby_shower, birthday, hackathon, public_speaking, concert]
 guest_range: [8, 35]
 economics:
   cost_structure: {rental: 0.80, overhead: 0.20}

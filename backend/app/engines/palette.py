@@ -25,6 +25,9 @@ DEFAULT_PALETTES = {
     "baby_shower": [("#E8C4C8", "blush", 0.34), ("#F5F0E8", "ivory", 0.29), ("#A8B89A", "sage", 0.21)],
     "wedding": [("#F5F0E8", "ivory", 0.36), ("#D9C6A5", "gold", 0.24), ("#8A9A8B", "sage", 0.2)],
     "birthday": [("#B4A5C3", "dusty lavender", 0.33), ("#AAC8E1", "sky", 0.27), ("#F5C8AA", "peach", 0.22)],
+    "hackathon": [("#1E293B", "midnight", 0.4), ("#38BDF8", "electric blue", 0.32), ("#22D3A7", "mint", 0.2)],
+    "public_speaking": [("#111827", "charcoal", 0.4), ("#4F46E5", "indigo", 0.3), ("#F8FAFC", "stage white", 0.22)],
+    "concert": [("#0B0B12", "blackout", 0.42), ("#7C3AED", "violet", 0.3), ("#EC4899", "magenta", 0.2)],
 }
 
 

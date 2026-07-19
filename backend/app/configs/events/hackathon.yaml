@@ -1,0 +1,32 @@
+key: hackathon
+display_name: Hackathon
+planning_horizon_days:
+- 21
+- 90
+typical_guest_range:
+- 40
+- 300
+required_categories:
+- venue
+- catering
+optional_categories:
+- photo
+- decor
+style_taxonomy:
+- palette
+- density
+- theme
+palette_extraction: enabled
+interview_tone: casual_fast
+default_ranking_weights:
+  price: 0.5
+  completeness: 0.25
+  risk: 0.15
+  reputation: 0.1
+base_levers:
+- bundle
+- weekday_slot
+- daytime_slot
+- competing_bid
+- scope_reduction
+base_levers_harmful: []

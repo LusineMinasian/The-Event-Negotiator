@@ -1,0 +1,33 @@
+key: concert
+display_name: Concert
+planning_horizon_days:
+- 30
+- 120
+typical_guest_range:
+- 80
+- 500
+required_categories:
+- venue
+- music
+optional_categories:
+- catering
+- photo
+- decor
+style_taxonomy:
+- palette
+- density
+- theme
+palette_extraction: enabled
+interview_tone: casual_fast
+default_ranking_weights:
+  price: 0.4
+  completeness: 0.3
+  risk: 0.2
+  reputation: 0.1
+base_levers:
+- bundle
+- off_season
+- weekday_slot
+- competing_bid
+- scope_reduction
+base_levers_harmful: []

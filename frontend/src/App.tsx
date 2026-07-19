@@ -24,7 +24,15 @@ function TopBar() {
   const [mode, setMode] = useState<{ call_mode: string; live: boolean } | null>(null);
   useEffect(() => {
     api.meta().then((m) => setMode({ call_mode: m.call_mode, live: m.live_calls_available })).catch(() => {});
+    // KeysPanel dispatches this after saving so the top-right chip reflects the change instantly
+    const onMode = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      setMode({ call_mode: d.call_mode, live: !!d.live });
+    };
+    window.addEventListener("en:call-mode", onMode);
+    return () => window.removeEventListener("en:call-mode", onMode);
   }, []);
+  const isLive = mode?.call_mode === "live";
   return (
     <div className="topbar">
       <NavLink to="/" className="brand" style={{ textDecoration: "none" }}>
@@ -40,8 +48,8 @@ function TopBar() {
       </nav>
       <div className="spacer" />
       {mode && (
-        <span className={`chip ${mode.live ? "live" : "sim"}`}>
-          {mode.live ? "● live calls" : "● simulation"}
+        <span className={`chip ${isLive ? "live" : "sim"}`}>
+          {isLive ? "● live" : "● simulation"}
         </span>
       )}
       <span className="small user-email">{user?.email}</span>

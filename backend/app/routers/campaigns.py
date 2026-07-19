@@ -32,6 +32,21 @@ async def start_campaign(campaign_id: str, user: User = Depends(current_user), d
     return {"status": "started"}
 
 
+@router.post("/{campaign_id}/stop")
+async def stop_campaign(campaign_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Halt a running campaign: no new calls start, in-flight simulated calls bail at
+    their next step. Idempotent — safe to hit even if already finished."""
+    campaign = db.get(Campaign, campaign_id)
+    if not campaign:
+        raise HTTPException(404, "Campaign not found")
+    caller.stop_campaign(campaign_id)
+    if campaign.status not in ("completed", "stopped"):
+        campaign.status = "stopped"
+        db.commit()
+        await bus.publish(campaign_id, "campaign.stopped", {"campaign_id": campaign_id})
+    return {"status": "stopped"}
+
+
 @router.get("/{campaign_id}")
 def campaign_state(campaign_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     campaign = db.get(Campaign, campaign_id)

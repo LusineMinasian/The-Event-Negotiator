@@ -1,7 +1,7 @@
 key: catering__delivery
 parent_category: catering
 display_name: Food delivery
-applicable_events: [baby_shower, birthday]
+applicable_events: [baby_shower, birthday, hackathon, public_speaking, concert]
 guest_range: [10, 200]
 economics:
   cost_structure: {food: 0.65, labor: 0.10, overhead: 0.25}

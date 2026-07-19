@@ -79,6 +79,7 @@ export const api = {
   patchVendor: (id: string, body: any) => req("PATCH", `/vendors/${id}`, body),
   vendorDetails: (id: string) => req("GET", `/vendors/${id}/details`),
   startCampaign: (id: string) => req("POST", `/campaigns/${id}/start`),
+  stopCampaign: (id: string) => req("POST", `/campaigns/${id}/stop`),
   campaign: (id: string) => req("GET", `/campaigns/${id}`),
   callDetail: (cid: string, callId: string) => req("GET", `/campaigns/${cid}/calls/${callId}`),
   resolveHandoff: (cid: string, callId: string) =>

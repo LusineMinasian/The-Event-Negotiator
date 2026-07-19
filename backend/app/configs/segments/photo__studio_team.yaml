@@ -1,7 +1,7 @@
 key: photo__studio_team
 parent_category: photo
 display_name: Studio with team
-applicable_events: [wedding]
+applicable_events: [wedding, public_speaking, concert]
 guest_range: [40, 300]
 economics:
   cost_structure: {labor: 0.40, editing: 0.40, overhead: 0.20}

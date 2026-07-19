@@ -32,6 +32,26 @@ handoff_events: dict[str, asyncio.Event] = {}
 question_events: dict[str, asyncio.Event] = {}
 question_answers: dict[str, str] = {}
 
+# Running campaign tasks + a stop flag, so a campaign can be cancelled mid-flight.
+_campaign_tasks: dict[str, "asyncio.Task"] = {}
+_stopped: set[str] = set()
+
+
+def is_stopped(campaign_id: str) -> bool:
+    return campaign_id in _stopped
+
+
+def stop_campaign(campaign_id: str) -> bool:
+    """Signal a running campaign to halt and cancel its task. Returns True if it was
+    running. In-flight simulated calls bail at their next await; live calls already
+    dispatched can't be un-dialed, but no new ones start."""
+    _stopped.add(campaign_id)
+    task = _campaign_tasks.get(campaign_id)
+    if task and not task.done():
+        task.cancel()
+        return True
+    return False
+
 STEP = 0.7  # seconds between utterances (tune for demo pacing)
 
 
@@ -66,20 +86,32 @@ async def run_campaign(campaign_id: str) -> None:
     """Public entrypoint (fire-and-forget task). Wraps the orchestration so a crash marks
     the campaign 'failed' instead of leaving it stuck 'running' (which the 409 guard would
     then block from ever restarting)."""
+    _stopped.discard(campaign_id)
+    _campaign_tasks[campaign_id] = asyncio.current_task()  # type: ignore[assignment]
     try:
         await _run_campaign(campaign_id)
+    except asyncio.CancelledError:
+        # user hit Stop — mark it stopped and end quietly (don't re-raise)
+        _mark_status(campaign_id, "stopped")
+        await bus.publish(campaign_id, "campaign.stopped", {"campaign_id": campaign_id})
     except Exception as exc:  # noqa: BLE001 — background task; must not vanish silently
         import traceback
         traceback.print_exc()
-        db = SessionLocal()
-        try:
-            c = db.get(Campaign, campaign_id)
-            if c and c.status != "completed":
-                c.status = "failed"
-                db.commit()
-        finally:
-            db.close()
+        _mark_status(campaign_id, "failed")
         await bus.publish(campaign_id, "campaign.failed", {"campaign_id": campaign_id, "error": str(exc)[:200]})
+    finally:
+        _campaign_tasks.pop(campaign_id, None)
+
+
+def _mark_status(campaign_id: str, status: str) -> None:
+    db = SessionLocal()
+    try:
+        c = db.get(Campaign, campaign_id)
+        if c and c.status != "completed":
+            c.status = status
+            db.commit()
+    finally:
+        db.close()
 
 
 async def _run_campaign(campaign_id: str) -> None:
@@ -113,6 +145,8 @@ async def _run_campaign(campaign_id: str) -> None:
 
     async def guarded(v: Vendor):
         async with sem:
+            if is_stopped(campaign_id):
+                return
             await asyncio.sleep(0.2)
             await run_single_call(campaign_id, v.id, payload, event_key, region_key, verified,
                                   state, is_demo=(v.id == demo_vendor_id))
@@ -120,10 +154,14 @@ async def _run_campaign(campaign_id: str) -> None:
     # stagger starts slightly for a lively ticker
     tasks = []
     for i, v in enumerate(ordered):
+        if is_stopped(campaign_id):
+            break
         tasks.append(asyncio.create_task(guarded(v)))
         await asyncio.sleep(0.25)
     await asyncio.gather(*tasks)
 
+    if is_stopped(campaign_id):
+        return
     await finalize_campaign(campaign_id, event_key, payload)
 
 
@@ -149,6 +187,8 @@ async def _set_phase(db, campaign_id: str, call: Call, phase: str) -> None:
 async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
                           event_key: str, region_key: str, verified: list[dict],
                           state: dict | None = None, is_demo: bool = False) -> None:
+    if is_stopped(campaign_id):
+        return
     state = state if state is not None else {"handoff_done": False, "budget": payload.get("budget", {})}
     db = SessionLocal()
     try:

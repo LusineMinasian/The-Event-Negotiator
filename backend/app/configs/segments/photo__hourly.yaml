@@ -1,7 +1,7 @@
 key: photo__hourly
 parent_category: photo
 display_name: Hourly photographer
-applicable_events: [baby_shower, birthday, wedding]
+applicable_events: [baby_shower, birthday, wedding, hackathon, public_speaking, concert]
 guest_range: [5, 200]
 economics:
   cost_structure: {labor: 0.60, editing: 0.30, overhead: 0.10}

@@ -1,7 +1,7 @@
 key: music__live_band
 parent_category: music
 display_name: Live band
-applicable_events: [wedding]
+applicable_events: [wedding, concert]
 guest_range: [40, 300]
 economics:
   cost_structure: {labor: 0.75, equipment: 0.15, overhead: 0.10}

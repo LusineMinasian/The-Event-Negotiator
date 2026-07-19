@@ -44,7 +44,7 @@ export default function LiveDashboard() {
     load();
     api.elevenlabsStatus().then(setConn).catch(() => {});
     const poll = window.setInterval(() => {
-      if (statusRef.current !== "completed") load();
+      if (statusRef.current !== "completed" && statusRef.current !== "stopped") load();
     }, 4000);
     return () => window.clearInterval(poll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,6 +86,8 @@ export default function LiveDashboard() {
       case "question.resolved": setQuestion(null); push("q", `Answered (${p.answer}) · agent bargaining`, "var(--brand)"); scheduleRefetch(); break;
       case "call.ended": upd(p.call_id, { status: "completed", outcome: p.outcome, phase: "closed" }); scheduleRefetch(); break;
       case "campaign.completed": push("done", "Campaign complete — receipt ready", "var(--good)"); load(); break;
+      case "campaign.stopped":
+        statusRef.current = "stopped"; push("done", "Calls stopped by you", "var(--bad)"); load(); break;
     }
   };
   const { connected } = useCampaignSocket(campaignId!, handle);
@@ -114,7 +116,16 @@ export default function LiveDashboard() {
   const k = m?.kpi;
   const currency = m?.currency || "USD";
   const money = (n?: number) => fmtMoney(n, currency);
+  const stopped = m?.status === "stopped";
   const done = m?.status === "completed";
+  const live = !done && !stopped;
+
+  const stopCalls = async () => {
+    if (!window.confirm("Stop all calls now? In-flight simulated calls end at their next step.")) return;
+    statusRef.current = "stopped";
+    try { await api.stopCampaign(campaignId!); } catch { /* noop */ }
+    load();
+  };
   const outcomes: Record<string, number> = m?.outcomes || {};
   const outcomeSegs = [
     { label: "Quotes", value: outcomes.quote || 0, color: "var(--good)" },
@@ -141,8 +152,12 @@ export default function LiveDashboard() {
         </div>
         <div className="dash-head-actions">
           <span className={`chip ${connected ? "live" : "sim"}`}>{connected ? "● live feed" : "○ connecting"}</span>
+          {live && m && (
+            <button className="btn sm" style={{ background: "var(--bad)" }} onClick={stopCalls}>⏹ Stop calls</button>
+          )}
+          {stopped && <span className="chip sim">● stopped</span>}
           <Link className="btn ghost sm" to={`/campaign/${campaignId}/warroom`}>War Room →</Link>
-          {done && <Link className="btn sm" to={`/campaign/${campaignId}/receipt`}>View receipt →</Link>}
+          {(done || stopped) && <Link className="btn sm" to={`/campaign/${campaignId}/receipt`}>View receipt →</Link>}
         </div>
       </div>
 

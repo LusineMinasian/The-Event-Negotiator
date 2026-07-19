@@ -1,7 +1,7 @@
 key: catering__restaurant_offsite
 parent_category: catering
 display_name: Restaurant off-site
-applicable_events: [wedding, birthday]
+applicable_events: [wedding, birthday, public_speaking, concert]
 guest_range: [20, 150]
 economics:
   cost_structure: {food: 0.55, labor: 0.25, overhead: 0.20}

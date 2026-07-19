@@ -1,7 +1,7 @@
 key: decor__themed_set
 parent_category: decor
 display_name: Themed set
-applicable_events: [baby_shower, wedding, birthday]
+applicable_events: [baby_shower, wedding, birthday, hackathon, concert]
 guest_range: [10, 200]
 economics:
   cost_structure: {materials: 0.45, labor: 0.35, overhead: 0.20}
