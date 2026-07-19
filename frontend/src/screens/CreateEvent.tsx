@@ -41,6 +41,7 @@ export default function CreateEvent() {
   const [guests, setGuests] = useState(50);
   const [date, setDate] = useState("");
   const [budget, setBudget] = useState(15000);
+  const [budgetFocus, setBudgetFocus] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [images, setImages] = useState<{ id: string; url: string }[]>([]);
   const [colors, setColors] = useState<string[]>([]);
@@ -245,6 +246,10 @@ export default function CreateEvent() {
   const money = (n: number) => `${cur.symbol}${Math.round(n).toLocaleString()}`;
   const perGuest = guests > 0 ? Math.round(budget / guests) : 0;
   const today = new Date().toISOString().slice(0, 10);
+  // budget can be typed directly or dragged; both drive `budget` (local currency)
+  const budgetLo = 1000 * cur.scale;
+  const budgetHi = (BUDGET_MAX[type] || 40000) * cur.scale;
+  const budgetShown = budgetFocus ? String(Math.round(budget)) : Math.round(budget).toLocaleString();
 
   return (
     <div className="wiz">
@@ -446,11 +451,19 @@ export default function CreateEvent() {
             <>
               <h1 className="wiz-h">Set your budget</h1>
               <p className="wiz-sub">A ceiling for the whole event — the agents negotiate to stay under it.</p>
-              <div className="budget-display">{money(budget)}</div>
-              <div className="small" style={{ textAlign: "center", marginBottom: 18 }}>≈ {money(perGuest)} per guest · {guests} guests</div>
-              <input type="range" className="range" min={1000 * cur.scale}
-                     max={(BUDGET_MAX[type] || 40000) * cur.scale} step={500 * cur.scale}
-                     value={budget} onChange={(e) => setBudget(+e.target.value)} />
+              <div className="budget-display">
+                <span className="budget-sym">{cur.symbol}</span>
+                <input className="budget-input" inputMode="numeric" aria-label="Budget ceiling"
+                       value={budgetShown} style={{ width: `${Math.max(budgetShown.length, 1)}ch` }}
+                       onFocus={(e) => { setBudgetFocus(true); requestAnimationFrame(() => e.target.select()); }}
+                       onBlur={() => { setBudgetFocus(false); setBudget((b) => Math.min(budgetHi, Math.max(budgetLo, Math.round(b)))); }}
+                       onChange={(e) => { const n = parseInt(e.target.value.replace(/[^\d]/g, ""), 10);
+                                          setBudget(Number.isNaN(n) ? 0 : Math.min(budgetHi, n)); }} />
+              </div>
+              <div className="small" style={{ textAlign: "center", marginBottom: 18 }}>≈ {money(perGuest)} per guest · {guests} guests · type or drag</div>
+              <input type="range" className="range" min={budgetLo}
+                     max={budgetHi} step={500 * cur.scale}
+                     value={Math.min(budgetHi, Math.max(budgetLo, budget))} onChange={(e) => setBudget(+e.target.value)} />
               <div className="wiz-review">
                 <div className="rev-row"><span>Event</span><b className="capitalize">{type.replace("_", " ") || "—"}</b></div>
                 <div className="rev-row"><span>Date</span><b>{date || "—"}</b></div>
