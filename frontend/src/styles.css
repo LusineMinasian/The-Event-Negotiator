@@ -170,6 +170,12 @@
   .keys-panel .field-input input { @apply text-[13px] py-[9px]; }
   .keys-import-msg { @apply rounded-lg px-3 py-2 mb-3; background: #f1eafb; color: var(--brand); font-weight: 600; }
   .test-call { @apply mt-3 pt-3; border-top: 1px solid var(--line); }
+  .conv-transcript { @apply mt-2 grid gap-[6px]; max-height: 240px; overflow-y: auto; padding: 10px; border-radius: 12px;
+    background: #f7f5fb; border: 1px solid var(--line); }
+  .conv-line { @apply text-[13px] leading-relaxed; color: var(--ink); }
+  .conv-line.agent { color: var(--ink); }
+  .conv-line.you { color: var(--ink-2); }
+  .conv-who { @apply text-[11px] font-bold mr-1; color: var(--muted); }
   .test-out { @apply rounded-xl px-3 py-[10px] mt-[10px] text-[13px]; border: 1px solid var(--line); }
   .test-out.good { background: #eaf8f0; border-color: #bfe8d1; }
   .test-out.bad { background: #fdeceb; border-color: #f3c9c5; color: var(--bad); }

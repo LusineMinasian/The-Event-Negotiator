@@ -12,6 +12,7 @@ CALL_MODE=live triggers the real ElevenLabs+Twilio connectors (see those modules
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -231,7 +232,8 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
                 conv = await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key)
             if conv is not None:  # dispatched (conv="" if no id) — don't fall back to simulation
                 if conv:
-                    await _poll_live_transcript(db, campaign_id, call, conv)
+                    await _poll_live_transcript(db, campaign_id, call, conv,
+                                                payload.get("budget", {}).get("currency", "USD"))
                 return
 
         region = store.region(region_key)
@@ -435,8 +437,9 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
         await _say(db, campaign_id, call, "system",
                    f"Live dial failed — {detail[:160]} — using simulation.", 0)
         return None
-    conv_id = result.get("conversation_id") or ""
-    call.twilio_sid = conv_id or result.get("callSid", "")
+    conv_id = (result.get("conversation_id") or result.get("conversationId")
+               or (result.get("data") or {}).get("conversation_id") or "")
+    call.twilio_sid = conv_id or result.get("callSid") or result.get("call_sid") or ""
     call.phase = "dialing"
     db.commit()
     if to_number:
@@ -449,12 +452,63 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
     return conv_id
 
 
-async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_id: str) -> None:
+# FX to convert a locally-spoken price into the USD base the dashboard stores in
+# (mirrors frontend money.ts). A price heard on a live call is in the local currency.
+_FX = {"USD": 1.0, "CHF": 1.0, "EUR": 1.0, "AMD": 365.0}
+_P_CUR = r"(?:\$|€|֏|dollars?|usd|bucks|dram|drams|amd|euros?|eur|chf|francs?)"
+_P_NUM = r"(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)"
+_P_MULT = r"(k|thousand|thousands|m|mil|million|millions)?"
+_P_PATTERNS = [
+    (rf"{_P_CUR}\s?{_P_NUM}\s*{_P_MULT}", False),
+    (rf"{_P_NUM}\s*{_P_MULT}\s*{_P_CUR}", False),
+    (rf"(?:price|quote|quoted|cost|charge|comes to|it'?s|that'?s|around|about|total|for)\D{{0,10}}{_P_NUM}\s*{_P_MULT}", False),
+    (rf"\b{_P_NUM}\s*(k|thousand|m|mil|million)\b", False),
+    (rf"\b(\d{{1,3}}(?:[,\s]\d{{3}})+|\d{{4,}})\b", True),
+]
+
+
+def _extract_price(text: str):
+    """Pull a monetary amount from a spoken line (currency/multiplier/keyword or a big
+    bare number). Guards against guest counts, durations and years. Returns a float or None."""
+    t = (text or "").lower()
+
+    def mult_of(mu: str) -> int:
+        mu = (mu or "").lower()
+        if mu.startswith("k") or mu.startswith("thousand"):
+            return 1000
+        if mu.startswith("m") or mu.startswith("mil"):
+            return 1_000_000
+        return 1
+
+    for pat, bare in _P_PATTERNS:
+        for m in re.finditer(pat, t):
+            after = t[m.end():m.end() + 12]
+            if re.match(r"\s*(guests?|people|pax|attendees|persons?|years?|months?|weeks?|days?)", after):
+                continue
+            digits = m.group(1).replace(",", "").replace(" ", "")
+            if bare and re.fullmatch(r"(19|20)\d{2}", digits):
+                continue
+            try:
+                raw = float(digits)
+            except ValueError:
+                continue
+            mu = m.group(2) if (m.lastindex and m.lastindex >= 2) else ""
+            v = round(raw * mult_of(mu))
+            if 100 <= v <= 1e9:
+                return float(v)
+    return None
+
+
+async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_id: str,
+                                currency: str = "USD") -> None:
     """Stream a live ElevenLabs call into the dashboard in near-real-time: poll the
     conversation and publish each new turn as it appears. Ends the call when ElevenLabs
     marks it done/failed (or a hard timeout). Keeps the call's task alive so the campaign
     doesn't finalize until the real call actually ends."""
     await _set_phase(db, campaign_id, call, "live")
+    vendor = db.get(Vendor, call.vendor_id)
+    rate = _FX.get(currency, 1.0)
+    quote: Quote | None = None
     seen = 0
     ended_reason = ""
     for _ in range(160):  # safety cap ~6-7 min at 2.5s
@@ -480,6 +534,33 @@ async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_i
                 "call_id": call.id, "speaker": speaker, "text": text, "ts_s": ts,
                 "lever_key": "", "utterance_id": u.id,
             })
+            # live pricing straight from what the vendor says — no reliance on the
+            # agent calling our tools. Store USD-base (÷ FX) so the dashboard converts back.
+            if speaker == "vendor" and vendor is not None:
+                local = _extract_price(text)
+                if local:
+                    usd = round(local / rate, 2)
+                    if quote is None:
+                        quote = Quote(call_id=call.id, campaign_id=campaign_id, vendor_id=vendor.id,
+                                      category=call.category, segment_key=call.segment_key_at_start,
+                                      currency="USD", line_items=[{"label": "Quoted total", "amount": usd}],
+                                      opening_total=usd, total=usd, status="verified",
+                                      negotiation={"opening_total": usd, "leverage_used": []})
+                        db.add(quote); db.commit()
+                        await bus.publish(campaign_id, "quote.new", _quote_event(quote, vendor))
+                    elif round(usd) != round(quote.total):
+                        from_total = quote.total
+                        quote.total = usd; db.commit()
+                        pe = PriceEvent(quote_id=quote.id, call_id=call.id, from_total=from_total,
+                                        to_total=usd, trigger_utterance_id=u.id, leverage_type="live",
+                                        segment_key=call.segment_key_at_start, ts_s=ts, attributed=True)
+                        db.add(pe); db.commit()
+                        await bus.publish(campaign_id, "price.move", {
+                            "call_id": call.id, "vendor_name": vendor.name, "category": call.category,
+                            "from_total": from_total, "to_total": usd, "leverage": "Live negotiation",
+                            "delta_pct": round((usd - from_total) / from_total * 100, 1) if from_total else 0,
+                        })
+                        await bus.publish(campaign_id, "quote.update", _quote_event(quote, vendor))
         seen = len(turns)
         status = (data.get("status") or "").lower()
         ended_reason = (data.get("metadata") or {}).get("termination_reason") or ""

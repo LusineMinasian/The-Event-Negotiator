@@ -68,7 +68,7 @@ export function useElevenLabsAgent(opts: {
 }) {
   const [active, setActive] = useState(false);
   const [error, setError] = useState("");
-  const convRef = useRef<{ endSession: () => void } | null>(null);
+  const convRef = useRef<{ endSession: () => void; sendContextualUpdate?: (t: string) => void } | null>(null);
   const uRef = useRef(opts.onUserText); uRef.current = opts.onUserText;
   const aRef = useRef(opts.onAgentText); aRef.current = opts.onAgentText;
 
@@ -79,12 +79,15 @@ export function useElevenLabsAgent(opts: {
     setActive(false);
   };
 
-  const start = async (conn: { agentId?: string; signedUrl?: string }) => {
+  const start = async (conn: { agentId?: string; signedUrl?: string },
+                       context?: Record<string, string | number | boolean>) => {
     setError("");
     try {
       // load the SDK on demand — keeps it out of the initial bundle
       const { Conversation } = await import("@elevenlabs/client");
-      const common = {
+      const common: any = {
+        // event type / details chosen on screen 1 → the agent starts already knowing them
+        ...(context ? { dynamicVariables: context } : {}),
         onConnect: () => setActive(true),
         // details.reason: "agent" (agent ended) | "user" | "error" — surface the real
         // cause instead of the SDK's internal send-on-closed-socket spam.
@@ -107,6 +110,17 @@ export function useElevenLabsAgent(opts: {
         ? { agentId: conn.agentId, connectionType: "webrtc", ...common }
         : { signedUrl: conn.signedUrl, connectionType: "websocket", ...common };
       convRef.current = await Conversation.startSession(session);
+      // belt-and-suspenders: also tell the agent in plain language, so it knows the
+      // event type even if its prompt doesn't template {{event_type}}.
+      if (context?.event_type) {
+        try {
+          convRef.current?.sendContextualUpdate?.(
+            `The user is planning a ${String(context.event_type).replace(/_/g, " ")}` +
+            (context.guests ? ` for about ${context.guests} guests` : "") +
+            (context.city ? ` in ${context.city}` : "") +
+            `. Help them plan it — you already know the event type, so don't ask what kind of event it is.`);
+        } catch { /* noop */ }
+      }
     } catch (e: any) {
       setError(e?.message || "mic/permission error");
       setActive(false);

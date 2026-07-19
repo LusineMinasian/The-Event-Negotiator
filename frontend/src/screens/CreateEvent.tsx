@@ -119,9 +119,15 @@ export default function CreateEvent() {
     if (elReady) {
       if (el.active) return el.stop();
       const r = await api.intakeSignedUrl();
+      // hand the agent what's already known from screen 1 (the event type, plus any
+      // guests/city already captured) so it starts in-context instead of asking.
+      const ctx: Record<string, string | number> = {};
+      if (type) ctx.event_type = type.replace(/_/g, " ");
+      if (guests) ctx.guests = guests;
+      if (city) ctx.city = city;
       // Prefer WebRTC by agent id (public agent, robust); signed URL is the fallback.
-      if (r.agent_id) el.start({ agentId: r.agent_id });
-      else if (r.signed_url) el.start({ signedUrl: r.signed_url });
+      if (r.agent_id) el.start({ agentId: r.agent_id }, ctx);
+      else if (r.signed_url) el.start({ signedUrl: r.signed_url }, ctx);
       else { setElReady(false); speech.start(); }
       return;
     }

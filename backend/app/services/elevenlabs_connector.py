@@ -156,13 +156,18 @@ async def conversation_status(conversation_id: str) -> dict:
         return {"ok": False, "status": r.status_code, "error": (r.text or r.reason_phrase)[:300]}
     data = r.json()
     meta = data.get("metadata") or {}
-    turns = len([t for t in (data.get("transcript") or []) if t.get("message")])
+    lines = [
+        {"speaker": ("agent" if (t.get("role") or "") in ("agent", "assistant", "ai") else "you"),
+         "text": (t.get("message") or "").strip()}
+        for t in (data.get("transcript") or []) if (t.get("message") or "").strip()
+    ]
     return {
         "ok": True,
         "status": data.get("status", ""),                       # e.g. done | failed | in-progress
         "termination_reason": meta.get("termination_reason", ""),
         "duration_secs": meta.get("call_duration_secs", 0),
-        "turns": turns,
+        "turns": len(lines),
+        "transcript": lines,                                    # the actual conversation, so the UI can show it
     }
 
 

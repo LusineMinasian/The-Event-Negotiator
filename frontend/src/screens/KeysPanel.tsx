@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { Spinner } from "../ui";
+import { detectBudget } from "../vibe";
 
 type Field = {
   key: string; label: string; secret: boolean;
@@ -116,17 +117,20 @@ export default function KeysPanel() {
       setTesting(false); return;
     }
     setTesting(false);
-    // if the call was accepted, ask ElevenLabs how the conversation actually ended —
-    // this is where "answered then dropped in 1s" (init failure, 0 turns) shows itself
-    const cid = r?.response?.conversation_id || r?.response?.conversationId;
+    // if accepted, stream the live transcript from ElevenLabs into the panel — polling
+    // the conversation every 3s while the call is in progress, until it ends.
+    const cid = r?.response?.conversation_id || r?.response?.conversationId
+      || (r?.response?.data || {}).conversation_id;
     if (r.ok && cid) {
-      setConvStatus({ pending: true, note: "checking how the call went…" });
-      for (let i = 0; i < 4; i++) {
-        await new Promise((res) => setTimeout(res, 4000));
+      setConvStatus({ pending: true, note: "waiting for the call to connect…" });
+      for (let i = 0; i < 60; i++) {              // up to ~3 min
+        await new Promise((res) => setTimeout(res, 3000));
         try {
           const cs = await api.conversationStatus(cid);
+          if (cs?.pending) { setConvStatus({ ...cs, note: "waiting for the call to connect…" }); continue; }
           setConvStatus(cs);
-          if (cs?.ok && !cs.pending && cs.status && !/initiat|in-progress/i.test(cs.status)) break;
+          const done = cs?.ok && cs.status && !/initiat|in.?progress|processing/i.test(cs.status);
+          if (done) break;
         } catch { /* keep trying */ }
       }
     }
@@ -142,7 +146,7 @@ export default function KeysPanel() {
           <h3 style={{ margin: 0 }}>Bring your own keys</h3>
           <div className="small">Stored on your account · applied to your calls, discovery & reading.</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <input ref={fileRef} type="file" accept=".env,.csv,.txt,text/plain" style={{ display: "none" }}
                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ""; }} />
           <button className="btn ghost sm" onClick={() => fileRef.current?.click()} title="Import a .env or CSV file">⤵ Import</button>
@@ -150,8 +154,12 @@ export default function KeysPanel() {
           <button className="btn ghost sm" onClick={load} disabled={busy} aria-label="Reload">
             {busy ? <Spinner size={13} /> : "↻"}
           </button>
+          <button className="btn sm" onClick={save} disabled={!dirty || saving}>
+            {saving ? <Spinner size={13} /> : null} Save keys
+          </button>
         </div>
       </div>
+      {saved && <div className="small" style={{ color: "var(--good)", marginBottom: 4 }}>✓ Saved — active now.</div>}
 
       {importMsg && <div className="small keys-import-msg">{importMsg}</div>}
 
@@ -215,14 +223,6 @@ export default function KeysPanel() {
           {convStatus && <ConvStatus cs={convStatus} />}
         </div>
       )}
-
-      <div className="save-bar">
-        {saved && <span className="small" style={{ color: "var(--good)" }}>✓ Active now</span>}
-        <span className="spacer" />
-        <button className="btn sm" onClick={save} disabled={!dirty || saving}>
-          {saving ? <Spinner size={13} /> : null} Save keys
-        </button>
-      </div>
     </div>
   );
 }
@@ -269,12 +269,34 @@ function ConvStatus({ cs }: { cs: any }) {
   if (cs.pending) return <div className="small" style={{ marginTop: 8 }}>⏳ {cs.note || "checking how the call went…"}</div>;
   if (!cs.ok) return <div className="small" style={{ marginTop: 8, color: "var(--warn)" }}>Couldn't read the conversation: {cs.error}</div>;
   const reason = cs.termination_reason || "";
-  const bad = (cs.turns ?? 0) === 0 || /fail/i.test(cs.status || "") || /fail|init/i.test(reason);
+  const turns = cs.turns ?? 0;
+  const transcript: { speaker: string; text: string }[] = cs.transcript || [];
+  const live = /initiat|in.?progress|processing/i.test(cs.status || "");
+  const bad = !live && turns === 0 && (/fail/i.test(cs.status || "") || /fail|init/i.test(reason));
+  // latest price mentioned anywhere in the conversation — shown live as it's heard
+  let price: number | null = null;
+  for (let i = transcript.length - 1; i >= 0 && price == null; i--) price = detectBudget(transcript[i].text);
   return (
-    <div className="small" style={{ marginTop: 8, color: bad ? "var(--bad)" : "var(--good)" }}>
-      ElevenLabs verdict: <b>{cs.status || "—"}</b>{reason ? ` · ${reason}` : ""} · {cs.turns ?? 0} turn(s), {cs.duration_secs ?? 0}s.
-      {bad && (cs.turns ?? 0) === 0 && (
-        <div style={{ marginTop: 4 }}>
+    <div style={{ marginTop: 8 }}>
+      <div className="small" style={{ color: bad ? "var(--bad)" : live ? "var(--brand)" : "var(--good)", fontWeight: 600 }}>
+        {live ? "● Live" : "ElevenLabs"}: {cs.status || "—"}{reason ? ` · ${reason}` : ""} · {turns} turn(s), {cs.duration_secs ?? 0}s
+      </div>
+      {price != null && (
+        <div className="small" style={{ marginTop: 4, color: "var(--good)", fontWeight: 700 }}>
+          💰 Price heard: {price.toLocaleString()}
+        </div>
+      )}
+      {transcript.length > 0 && (
+        <div className="conv-transcript">
+          {transcript.map((t, i) => (
+            <div key={i} className={`conv-line ${t.speaker}`}>
+              <span className="conv-who">{t.speaker === "agent" ? "🤖 Agent" : "🙋 You"}</span> {t.text}
+            </div>
+          ))}
+        </div>
+      )}
+      {bad && turns === 0 && (
+        <div className="small" style={{ marginTop: 4, color: "var(--bad)" }}>
           The agent never spoke — this is an <b>agent config</b> problem, not a phone one. In ElevenLabs, open your
           caller agent → Tools and remove/disable any tool showing a validation error (e.g. transfer / update-state
           with no rule), then Save.
