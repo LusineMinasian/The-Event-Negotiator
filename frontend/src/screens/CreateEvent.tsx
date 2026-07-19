@@ -277,7 +277,7 @@ export default function CreateEvent() {
             <>
               <h1 className="wiz-h">Tell me the vibe</h1>
               <p className="wiz-sub">Speak freely — colors, mood, guest count. Name a color and the room repaints;
-                drop an image or paste a link and the palette follows.</p>
+                attach your event moodboard if you have one and the palette follows.</p>
               <div className={`studio-stage studio-drop ${drag ? "drag" : ""}`}
                    onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
                    onDrop={(e) => { e.preventDefault(); setDrag(false); onFiles(e.dataTransfer.files); }}>
@@ -319,10 +319,10 @@ export default function CreateEvent() {
               )}
 
               <div className="flex gap-3 flex-wrap mt-4 items-center">
-                <button className="btn ghost sm" onClick={() => fileInput.current?.click()}>🖼 Add images</button>
+                <button className="btn ghost sm" onClick={() => fileInput.current?.click()}>📌 Attach moodboard</button>
                 <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
                 <div className="flex gap-2 items-center flex-1" style={{ minWidth: 240 }}>
-                  <input placeholder="Paste a Pinterest / image link" value={pinUrl}
+                  <input placeholder="Or paste a moodboard link (Pinterest, etc.)" value={pinUrl}
                          onChange={(e) => setPinUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPin()} />
                   <button className="btn ghost sm" onClick={addPin}>Add</button>
                 </div>
