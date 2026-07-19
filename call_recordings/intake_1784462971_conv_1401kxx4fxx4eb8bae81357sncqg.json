@@ -1,0 +1,56 @@
+{
+  "conversation_id": "conv_1401kxx4fxx4eb8bae81357sncqg",
+  "role": "intake",
+  "agent_name": "02 · Intake / Estimator",
+  "to_number": "",
+  "start_time_unix_secs": 1784462971,
+  "duration_secs": 93,
+  "status": "done",
+  "transcript": [
+    {
+      "role": "agent",
+      "text": "Hi! I'm here to help you plan this out — let's start with the basics. What are we celebrating, and roughly when?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, I'd like to organize a birthday party for myself, uh, in New York City on December 12th."
+    },
+    {
+      "role": "agent",
+      "text": "Great, a birthday party on December twelfth in New York City. How many guests are you expecting, and is that number flexible?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, the number of guests rise around 40 to 50, 50 guests."
+    },
+    {
+      "role": "agent",
+      "text": "Got it, around fifty guests. Do you have a specific budget in mind for the event? If you can, let me know how you might want to split it across things like venue, catering, and decor."
+    },
+    {
+      "role": "user",
+      "text": "I have a total budget of, uh, $10,000 for the event, uh, and I want to spend not more than 30% of it for the catering, uh, and the rest goes for venue and decor."
+    },
+    {
+      "role": "agent",
+      "text": "Thanks for sharing that. So, with a budget of ten thousand dollars, you're planning to allocate around three thousand for catering. Let's focus on the venue next. Do you have any preferences regarding whether it should be indoor or outdoor, and any specific amenities you might need?"
+    },
+    {
+      "role": "user",
+      "text": "I prefer it to be indoor. The rest, yeah, I don't care about, uh, that much, I guess."
+    },
+    {
+      "role": "agent",
+      "text": "Indoor sounds cozy, especially in December. How about catering? Do you have a preference for..."
+    },
+    {
+      "role": "user",
+      "text": "We will be having a dinner in our home, maybe 7:00."
+    },
+    {
+      "role": "agent",
+      "text": "That sounds lovely and..."
+    }
+  ],
+  "audio_file": "intake_1784462971_conv_1401kxx4fxx4eb8bae81357sncqg.mp3"
+}

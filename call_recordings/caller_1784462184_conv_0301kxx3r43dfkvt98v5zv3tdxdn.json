@@ -1,0 +1,88 @@
+{
+  "conversation_id": "conv_0301kxx3r43dfkvt98v5zv3tdxdn",
+  "role": "caller",
+  "agent_name": "01 · Caller / Negotiator",
+  "to_number": "",
+  "start_time_unix_secs": 1784462184,
+  "duration_secs": 482,
+  "status": "done",
+  "transcript": [
+    {
+      "role": "agent",
+      "text": "Hi, quick heads up — I'm an AI assistant calling on behalf of a client to get a quote for an event, and this call may be recorded. Is now an okay time?"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, okay. You can, you can say."
+    },
+    {
+      "role": "agent",
+      "text": "Great, thanks. The event is a birthday on September thirteenth, two thousand twenty-six, for thirty guests in San Francisco. It's a daytime slot, and the weekday is flexible. What would a quote start at for this?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, what starts?"
+    },
+    {
+      "role": "agent",
+      "text": "I'm looking for a starting quote for catering this event. Could you provide a rough estimate of the cost?"
+    },
+    {
+      "role": "user",
+      "text": "In terms of 20-- uh, something around, uh, 25,000 of dollars."
+    },
+    {
+      "role": "agent",
+      "text": "Hm, that's above what my client was hoping..."
+    },
+    {
+      "role": "user",
+      "text": "Okay, one moment, please."
+    },
+    {
+      "role": "user",
+      "text": "So, what we gonna do?"
+    },
+    {
+      "role": "agent",
+      "text": "Let's explore some options to adjust the price. Is the setup fee always mandatory, or is it included with the full package?"
+    },
+    {
+      "role": "user",
+      "text": "Um, it's all full package."
+    },
+    {
+      "role": "agent",
+      "text": "I hear you. If we move the event to a Thursday instead, how does the price change?"
+    },
+    {
+      "role": "user",
+      "text": "It will, uh, decrease the cost, uh, to $23,000."
+    },
+    {
+      "role": "agent",
+      "text": "That adjustment helps. Since it's a daytime event and the space is free again by six, does that change the rate further?"
+    },
+    {
+      "role": "user",
+      "text": "Can you repeat that?"
+    },
+    {
+      "role": "agent",
+      "text": "Sure, since it's a daytime event and the..."
+    },
+    {
+      "role": "user",
+      "text": "No, it doesn't."
+    },
+    {
+      "role": "agent",
+      "text": "Got it. Now, if we drop the dessert table, what does that bring the total to?"
+    },
+    {
+      "role": "user",
+      "text": "Mm-hmm. Вот это покажи, что типа можно вот здесь вот что-то там менять. Иии вот на этом можно вести, типа что- Да, я вижу, что ты ведешь. Я вижу, что ты ведешь. По-моему, щас шаблон добавляется. И шаблон добавляется."
+    }
+  ],
+  "audio_file": "caller_1784462184_conv_0301kxx3r43dfkvt98v5zv3tdxdn.mp3"
+}

@@ -1,0 +1,80 @@
+{
+  "conversation_id": "conv_3201kxwxvhymerpa8m0yrt49zd2p",
+  "role": "caller",
+  "agent_name": "01 · Caller / Negotiator",
+  "to_number": "+37498603464",
+  "start_time_unix_secs": 1784456013,
+  "duration_secs": 106,
+  "status": "done",
+  "transcript": [
+    {
+      "role": "agent",
+      "text": "Hi, quick heads up — I'm an AI assistant calling on behalf of a client to get a quote for an event, and this call may be recorded. Is now an okay time?"
+    },
+    {
+      "role": "user",
+      "text": "Um, yeah. Yeah, it's definitely, it's totally okay."
+    },
+    {
+      "role": "agent",
+      "text": "Great, thank you. I'm looking to get a quote for a wedding on September thirteenth, two thousand..."
+    },
+    {
+      "role": "user",
+      "text": "Um, sorry, are you a robot or a real person?"
+    },
+    {
+      "role": "agent",
+      "text": "Yes, I'm an AI assistant calling for a client. I'm here to help gather information quickly. So, for the wedding on September..."
+    },
+    {
+      "role": "user",
+      "text": "Yeah, I see."
+    },
+    {
+      "role": "agent",
+      "text": "Thank you. The wedding is on September..."
+    },
+    {
+      "role": "user",
+      "text": "Yeah. What, what is about the wedding? What is the wedding?"
+    },
+    {
+      "role": "agent",
+      "text": "The wedding is on September thirteenth, two thousand twenty-six, for eighty guests in New York. It's a daytime event, and the weekday is flexible. Could you let me know what a quote would start at for entertainment services?"
+    },
+    {
+      "role": "user",
+      "text": "It's starting from two thousand."
+    },
+    {
+      "role": "agent",
+      "text": "Thank you for that. Could you also provide details on any additional line items or fees that might be included in the package?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, oh, oh, oh, oh, let's start. Is it a price okay for you?"
+    },
+    {
+      "role": "agent",
+      "text": "I appreciate the starting price. To better understand the full scope, could you share details on any additional fees or services that might be included?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, well, with... It's nothing. Nothing is inc- included."
+    },
+    {
+      "role": "agent",
+      "text": "Thank you for clarifying. If there are no additional fees, I appreciate your time. Can I help you with anything else today?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, yeah. Do you think about anything?"
+    },
+    {
+      "role": "agent",
+      "text": "Thank you for your time. If you need anything else, feel free to reach out. Goodbye!"
+    }
+  ],
+  "audio_file": "caller_1784456013_conv_3201kxwxvhymerpa8m0yrt49zd2p.mp3"
+}

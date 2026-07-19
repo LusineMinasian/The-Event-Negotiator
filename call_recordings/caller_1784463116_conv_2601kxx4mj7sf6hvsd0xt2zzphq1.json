@@ -1,0 +1,88 @@
+{
+  "conversation_id": "conv_2601kxx4mj7sf6hvsd0xt2zzphq1",
+  "role": "caller",
+  "agent_name": "01 · Caller / Negotiator",
+  "to_number": "",
+  "start_time_unix_secs": 1784463116,
+  "duration_secs": 482,
+  "status": "done",
+  "transcript": [
+    {
+      "role": "agent",
+      "text": "Hi, quick heads up — I'm an AI assistant calling on behalf of a client to..."
+    },
+    {
+      "role": "user",
+      "text": "Okay."
+    },
+    {
+      "role": "agent",
+      "text": "Great! I'm looking to get a quote for a birthday event on December eleventh, two thousand twenty-six, for fifty guests in New York. It's a daytime event, and we're flexible on the weekday. Could you let me know what the starting price would be?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, it starts, uh, about, uh, $12,000."
+    },
+    {
+      "role": "agent",
+      "text": "Hm, that's above what my client was hoping for. Could you tell me if the setup fee is always mandatory, or is it included with the full package?"
+    },
+    {
+      "role": "user",
+      "text": "Everything is mandatory. Yeah, full package only."
+    },
+    {
+      "role": "agent",
+      "text": "I see. If we move it to a Thursday instead, how does the price change?"
+    },
+    {
+      "role": "user",
+      "text": "Well, in that case, it, uh, becomes, uh, $15,000."
+    },
+    {
+      "role": "agent",
+      "text": "I understand. Let's focus on the daytime aspect. Since it's a daytime event and the space will be free by six, does that change the rate at all?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, I think yeah."
+    },
+    {
+      "role": "agent",
+      "text": "Great, could you let me know what the new rate would be for a daytime event?"
+    },
+    {
+      "role": "user",
+      "text": "Uh, daytime events will cost like, uh, thir- thir- $13,000."
+    },
+    {
+      "role": "agent",
+      "text": "Thank you for that adjustment. Now, if we were to drop the dessert table, what would that bring the price to?"
+    },
+    {
+      "role": "user",
+      "text": "Dessert table, uh, is, uh, included in the package."
+    },
+    {
+      "role": "agent",
+      "text": "Got it. Could you give me a breakdown of what's included in the package, like food, staff, delivery, and any service charges?"
+    },
+    {
+      "role": "user",
+      "text": "It's all in the package."
+    },
+    {
+      "role": "agent",
+      "text": "Understood. Could you..."
+    },
+    {
+      "role": "user",
+      "text": "Okay."
+    },
+    {
+      "role": "agent",
+      "text": "Could you tell me about the deposit percentage required, its refundability, and how long the quote is valid for?..."
+    }
+  ],
+  "audio_file": "caller_1784463116_conv_2601kxx4mj7sf6hvsd0xt2zzphq1.mp3"
+}
