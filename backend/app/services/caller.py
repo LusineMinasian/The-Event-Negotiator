@@ -511,10 +511,10 @@ async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_i
     quote: Quote | None = None
     seen = 0
     ended_reason = ""
-    for _ in range(160):  # safety cap ~6-7 min at 2.5s
+    for _ in range(280):  # safety cap ~7 min at 1.5s
         if is_stopped(campaign_id):
             break
-        await asyncio.sleep(2.5)
+        await asyncio.sleep(1.5)
         try:
             data = await elevenlabs_connector.get_transcript(conversation_id)
         except Exception:  # noqa: BLE001 — transient; keep polling

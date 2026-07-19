@@ -122,16 +122,19 @@ export default function KeysPanel() {
     const cid = r?.response?.conversation_id || r?.response?.conversationId
       || (r?.response?.data || {}).conversation_id;
     if (r.ok && cid) {
-      setConvStatus({ pending: true, note: "waiting for the call to connect…" });
-      for (let i = 0; i < 60; i++) {              // up to ~3 min
-        await new Promise((res) => setTimeout(res, 3000));
+      const note = "On the call… ElevenLabs usually posts the transcript when the call ends.";
+      setConvStatus({ pending: true, note });
+      await new Promise((res) => setTimeout(res, 1200));
+      for (let i = 0; i < 160; i++) {              // ~3 min at 1.2s
         try {
           const cs = await api.conversationStatus(cid);
-          if (cs?.pending) { setConvStatus({ ...cs, note: "waiting for the call to connect…" }); continue; }
-          setConvStatus(cs);
-          const done = cs?.ok && cs.status && !/initiat|in.?progress|processing/i.test(cs.status);
-          if (done) break;
+          if (cs?.pending) { setConvStatus({ ...cs, note }); }
+          else {
+            setConvStatus(cs);
+            if (cs?.ok && cs.status && !/initiat|in.?progress|processing/i.test(cs.status)) break;
+          }
         } catch { /* keep trying */ }
+        await new Promise((res) => setTimeout(res, 1200));
       }
     }
   };
