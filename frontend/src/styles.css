@@ -364,6 +364,22 @@
   .agent-pop-sec > div:last-child { display: flex; flex-wrap: wrap; gap: 4px; }
   .agent-pop-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin-bottom: 5px; }
   .agent-pop-foot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .pill.lev.star { background: #ede4fb; color: var(--brand); font-weight: 700; }
+
+  /* inline "Recommended agent" panel inside the call drawer */
+  .agent-panel-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .agent-edit { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .lever-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .lever-row:last-of-type { border-bottom: 0; }
+  .lever-row.muted .lever-name { text-decoration: line-through; color: var(--muted); }
+  .lever-name { font-size: 14px; text-transform: capitalize; }
+  .lever-acts { display: flex; gap: 6px; flex-shrink: 0; }
+  .lever-acts .chip { cursor: pointer; border: 1px solid transparent; transition: all 0.15s ease; }
+  .lever-acts .chip.on { background: #ede4fb; color: var(--brand); border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
+  .lever-acts .chip.on.danger { background: #fdecec; color: #b23028; border-color: #f2c4c0; }
+  .agent-edit-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .agent-saved { color: var(--good); margin-top: 10px; }
 
   /* mid-call trade-off prompt — a focused card so you can bargain on the agent's behalf */
   .q-prompt {

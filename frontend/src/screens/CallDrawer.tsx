@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { Avatar } from "../ui";
+import { AgentPanel } from "./AgentInfo";
 
 const money = (n?: number) => (n == null ? "—" : "$" + Math.round(n).toLocaleString());
 
@@ -121,6 +122,12 @@ export default function CallDrawer({ campaignId, callId, live, onClose }: {
               </div>
             ))}
           </div>
+
+          {data?.call?.segment_final && (
+            <div style={{ marginTop: 14 }}>
+              <AgentPanel segmentKey={data.call.segment_final} style={data.call.style} />
+            </div>
+          )}
         </div>
       </div>
     </div>

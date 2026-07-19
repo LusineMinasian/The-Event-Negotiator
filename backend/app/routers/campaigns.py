@@ -331,6 +331,7 @@ def _call_summary(db, c: Call, store) -> dict:
         "category": c.category, "phase": c.phase, "status": c.status, "outcome": c.outcome,
         "segment_at_start": c.segment_key_at_start, "segment_final": c.segment_key_final,
         "segment_display": store.segment(c.segment_key_final).get("display_name", c.segment_key_final),
+        "style": (store.segment(c.segment_key_final).get("counterparty") or {}).get("style"),
         "duration_s": c.duration_s,
     }
 
