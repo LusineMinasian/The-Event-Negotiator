@@ -89,6 +89,11 @@ export const api = {
   receipt: (id: string) => req("GET", `/campaigns/${id}/receipt`),
   postmortem: (id: string) => req("GET", `/campaigns/${id}/postmortem`),
 
+  // user settings (per-account API keys)
+  settingsKeys: () => req("GET", "/settings/keys"),
+  saveSettingsKeys: (body: { values?: Record<string, string>; call_mode?: string }) =>
+    req("PUT", "/settings/keys", body),
+
   // integrations
   elevenlabsStatus: () => req("GET", "/integrations/elevenlabs"),
   preflight: () => req("GET", "/integrations/preflight"),

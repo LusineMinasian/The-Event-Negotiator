@@ -40,8 +40,10 @@ def campaign_state(campaign_id: str, user: User = Depends(current_user), db: Ses
     calls = db.scalars(select(Call).where(Call.campaign_id == campaign_id)).all()
     quotes = db.scalars(select(Quote).where(Quote.campaign_id == campaign_id)).all()
     store = get_store()
+    spec = db.get(Spec, campaign.spec_id)
     return {
         "status": campaign.status,
+        "currency": (spec.payload.get("budget", {}) if spec else {}).get("currency", "USD"),
         "calls": [_call_summary(db, c, store) for c in calls],
         "quotes": [_quote_summary(q) for q in quotes],
         "history": bus.history(campaign_id),

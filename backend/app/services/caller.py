@@ -606,6 +606,7 @@ async def finalize_campaign(campaign_id: str, event_key: str, payload: dict) -> 
             if r["rank"] == 1:
                 best_by_cat[r["category"]] = r["_obj"].total
         bg = budget_guard.evaluate(payload.get("budget", {}), best_by_cat)
+        bg["currency"] = payload.get("budget", {}).get("currency", "USD")
 
         campaign = db.get(Campaign, campaign_id)
         campaign.status = "completed"

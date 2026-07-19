@@ -27,6 +27,17 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
 
 
+class UserSecret(Base):
+    """Per-user API keys (ElevenLabs / Twilio / Google / Anthropic), entered in
+    Settings. Kept in its own table so it can be added without migrating `users`.
+    Applied onto the process settings for the requesting user (see
+    services.user_settings). Plaintext at rest — fine for a single-user demo."""
+    __tablename__ = "user_secrets"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now, onupdate=now)
+
+
 class Event(Base):
     __tablename__ = "events"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: _uuid("evt"))

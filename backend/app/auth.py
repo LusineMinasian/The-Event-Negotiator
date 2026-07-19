@@ -80,4 +80,11 @@ def current_user(cred: HTTPAuthorizationCredentials | None = Depends(_bearer),
     user = db.get(User, data["sub"])
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+    # overlay this user's saved API keys onto the process settings so the
+    # connectors run with their credentials (imported locally to avoid a cycle).
+    try:
+        from .services.user_settings import apply_for_user
+        apply_for_user(db, user)
+    except Exception:
+        pass
     return user

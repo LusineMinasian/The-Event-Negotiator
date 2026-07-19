@@ -48,7 +48,7 @@ export default function SystemCheck() {
       <div className="flex justify-between items-end flex-wrap gap-3">
         <div>
           <h1>System check</h1>
-          <p className="sub mb-0">A real preflight — each connector is actually probed. Add credentials in <span className="mono">.env</span> and re-run to watch them turn green.</p>
+          <p className="sub mb-0">A real preflight — each connector is actually probed. Add your keys in <a href="/settings" style={{ color: "var(--brand)", fontWeight: 600 }}>Settings</a> (or the server <span className="mono">.env</span>) and re-run to watch them turn green.</p>
         </div>
         <button className="btn ghost sm" onClick={run} disabled={busy}>
           {busy ? <Spinner size={14} /> : "↻"} Re-run

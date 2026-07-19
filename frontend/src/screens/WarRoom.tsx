@@ -25,10 +25,14 @@ export default function WarRoom() {
   const [selected, setSelected] = useState<string | null>(null);
   const [liveUtterance, setLiveUtterance] = useState<{ call_id: string; text: string; speaker: string } | null>(null);
   const tid = useRef(0);
-  const currency = budget?.currency || "USD";
-  const money = (n?: number) => fmtMoney(n, currency);
+  const [currency, setCurrency] = useState("USD");
+  const money = (n?: number) => fmtMoney(n, budget?.currency || currency);
 
   useEffect(() => { clearTheme(); }, []);
+  // seed the campaign currency up front so live tiles/drawer show it before completion
+  useEffect(() => {
+    if (campaignId) api.campaign(campaignId).then((d) => setCurrency(d.currency || "USD")).catch(() => {});
+  }, [campaignId]);
 
   const handle = (e: WsEvent) => {
     const p = e.payload;
@@ -185,7 +189,7 @@ export default function WarRoom() {
 
       {selected && (
         <CallDrawer campaignId={campaignId!} callId={selected} live={liveUtterance}
-                    currency={currency} onClose={() => setSelected(null)} />
+                    currency={budget?.currency || currency} onClose={() => setSelected(null)} />
       )}
     </div>
   );
