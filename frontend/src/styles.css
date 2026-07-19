@@ -170,6 +170,11 @@
   .keys-panel .field-input input { @apply text-[13px] py-[9px]; }
   .keys-import-msg { @apply rounded-lg px-3 py-2 mb-3; background: #f1eafb; color: var(--brand); font-weight: 600; }
   .test-call { @apply mt-3 pt-3; border-top: 1px solid var(--line); }
+  .test-out { @apply rounded-xl px-3 py-[10px] mt-[10px] text-[13px]; border: 1px solid var(--line); }
+  .test-out.good { background: #eaf8f0; border-color: #bfe8d1; }
+  .test-out.bad { background: #fdeceb; border-color: #f3c9c5; color: var(--bad); }
+  .test-links { @apply mt-[6px] mb-[6px] grid gap-[3px]; padding-left: 16px; list-style: disc; }
+  .test-links a { color: var(--brand); font-weight: 600; }
 
   /* Overview (README + keys) two-column page */
   .overview-cols { @apply grid gap-6 items-start; grid-template-columns: minmax(0, 1fr) 360px; }
@@ -609,7 +614,7 @@
       linear-gradient(150deg, var(--palette-g1), var(--palette-g2) 55%, var(--palette-g3));
     transition: background 0.9s ease-out;
   }
-  .wiz-header { display: flex; align-items: center; gap: 12px; padding: 16px 22px; flex-shrink: 0; }
+  .wiz-header { display: flex; align-items: center; gap: 12px; padding: 16px 22px; flex-shrink: 0; position: relative; }
   .wiz-icon {
     width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
     background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); font-size: 17px; color: var(--ink);
@@ -617,11 +622,14 @@
   }
   .wiz-icon:hover { background: #fff; }
   .wiz-icon:active { transform: translateY(1px); }
-  .wiz-brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: -0.01em; }
+  .wiz-brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: -0.01em; margin-right: auto; }
   .wiz-brand .dot { width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
-  .wiz-steps { display: flex; gap: 6px; margin: 0 auto; }
+  /* Absolutely centered so the pills sit at the header's true midpoint regardless of the
+     brand (left) being wider than the close icon (right). */
+  .wiz-steps { display: flex; gap: 6px; position: absolute; left: 50%; transform: translateX(-50%); }
   .wiz-pip { display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 6px; border-radius: 999px;
     background: rgba(255,255,255,0.55); border: 1px solid transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
+  .wiz-pip em { font-style: normal; }
   .wiz-pip span { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #e9e3f2; color: var(--muted); font-size: 12px; }
   .wiz-pip.on { color: var(--ink); border-color: color-mix(in srgb, var(--brand) 35%, transparent); background: #fff; }
   .wiz-pip.on span { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }

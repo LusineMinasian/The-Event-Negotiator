@@ -45,7 +45,7 @@ export default function KeysPanel() {
   const [saved, setSaved] = useState(false);
   const [importMsg, setImportMsg] = useState("");
   const [testing, setTesting] = useState(false);
-  const [testMsg, setTestMsg] = useState("");
+  const [testRes, setTestRes] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
@@ -105,14 +105,11 @@ export default function KeysPanel() {
   };
 
   const testCall = async () => {
-    setTesting(true); setTestMsg("");
+    setTesting(true); setTestRes(null);
     try {
-      const r = await api.testCall();
-      setTestMsg(r.ok
-        ? "✓ Call placed — your phone should ring in a few seconds. If it doesn't, check that this ElevenLabs phone number is a live Twilio number."
-        : "✕ " + (r.error || `HTTP ${r.status || "error"}`));
+      setTestRes(await api.testCall());
     } catch (e: any) {
-      setTestMsg("✕ " + (e?.message || "request failed"));
+      setTestRes({ ok: false, error: e?.message || "request failed" });
     } finally { setTesting(false); }
   };
 
@@ -195,11 +192,7 @@ export default function KeysPanel() {
           <button className="btn ghost sm" onClick={testCall} disabled={testing}>
             {testing ? <Spinner size={13} /> : "📞"} Test call to my phone
           </button>
-          {testMsg && (
-            <div className="small" style={{ marginTop: 8, color: testMsg.startsWith("✓") ? "var(--good)" : "var(--bad)" }}>
-              {testMsg}
-            </div>
-          )}
+          {testRes && <TestResult res={testRes} />}
         </div>
       )}
 
@@ -209,6 +202,42 @@ export default function KeysPanel() {
         <button className="btn sm" onClick={save} disabled={!dirty || saving}>
           {saving ? <Spinner size={13} /> : null} Save keys
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Renders the outcome of a test call: on success, the call IDs to trace + direct
+// links to the ElevenLabs and Twilio logs where a downstream failure actually shows.
+function TestResult({ res }: { res: any }) {
+  if (!res.ok) {
+    return (
+      <div className="test-out bad">
+        <div className="mono" style={{ wordBreak: "break-word" }}>✕ {res.error || `HTTP ${res.status || "error"}`}</div>
+      </div>
+    );
+  }
+  const resp = res.response || {};
+  const cid = resp.conversation_id || resp.conversationId || "";
+  const sid = resp.callSid || resp.call_sid || resp.sid || resp.twilio_call_sid || "";
+  return (
+    <div className="test-out good">
+      <div><b>✓ ElevenLabs accepted the call{res.to ? ` to ${res.to}` : ""}</b> — your phone should ring shortly.</div>
+      {(cid || sid) && (
+        <div className="small mono" style={{ marginTop: 6, wordBreak: "break-word" }}>
+          {cid && <>conversation: {cid}<br /></>}
+          {sid && <>Twilio call SID: {sid}</>}
+        </div>
+      )}
+      <div className="small" style={{ marginTop: 8 }}>
+        Didn't ring? The real ring/failure happens downstream — trace this call in the logs:
+        <ul className="test-links">
+          <li><a href="https://elevenlabs.io/app/conversational-ai/history" target="_blank" rel="noreferrer">ElevenLabs → Conversation history ↗</a></li>
+          <li><a href="https://console.twilio.com/us1/monitor/logs/calls" target="_blank" rel="noreferrer">Twilio → Monitor → Call logs ↗</a></li>
+          <li><a href="https://console.twilio.com/us1/monitor/logs/debugger" target="_blank" rel="noreferrer">Twilio → Debugger (error codes) ↗</a></li>
+        </ul>
+        Most common causes: Twilio <b>Geo-Permissions</b> block your country (enable it in Voice → Settings → Geo permissions),
+        a <b>trial</b> Twilio account can only call verified numbers, or the ElevenLabs phone number isn't a live Twilio number.
       </div>
     </div>
   );
