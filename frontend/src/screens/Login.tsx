@@ -42,7 +42,7 @@ export default function Login() {
            style={{ background: "radial-gradient(70% 60% at 12% 0%, rgba(167,139,250,0.55), transparent 60%), radial-gradient(58% 55% at 96% 18%, rgba(244,160,200,0.5), transparent 60%), radial-gradient(64% 60% at 60% 104%, rgba(255,206,150,0.45), transparent 60%), #f6f1fb" }}>
         <div className="relative flex items-center gap-3 font-bold text-lg" style={{ color: "var(--ink)" }}>
           <span className="w-9 h-9 rounded-[11px] grid place-items-center" style={{ background: "linear-gradient(150deg,#322a42,#201a2b)", color: "#d9c8ff" }}>✦</span>
-          The Event Negotiator
+          SayWhen
         </div>
         <div className="relative">
           <span className="section-eyebrow" style={{ background: "rgba(255,255,255,0.7)" }}>Voice negotiation</span>
@@ -71,7 +71,7 @@ export default function Login() {
       {/* form panel */}
       <div className="flex items-center justify-center p-6" style={{ background: "var(--bg)" }}>
         <div className="card pad auth-card">
-          <div className="brand lg:hidden mb-1"><span className="dot" /> The Event Negotiator</div>
+          <div className="brand lg:hidden mb-1"><span className="dot" /> SayWhen</div>
           <h2 className="text-[22px] mb-1">{mode === "register" ? "Create your account" : "Welcome back"}</h2>
           <p className="sub mb-5">{mode === "register" ? "Create your first event in under a minute." : "Sign in to pick up where you left off."}</p>
 

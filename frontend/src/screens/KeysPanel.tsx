@@ -46,6 +46,7 @@ export default function KeysPanel() {
   const [importMsg, setImportMsg] = useState("");
   const [testing, setTesting] = useState(false);
   const [testRes, setTestRes] = useState<any>(null);
+  const [convStatus, setConvStatus] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
@@ -84,7 +85,7 @@ export default function KeysPanel() {
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "event-negotiator-keys.csv"; a.click();
+    a.href = url; a.download = "saywhen-keys.csv"; a.click();
     URL.revokeObjectURL(url);
     setImportMsg("Exported CSV — secret keys are blank (never stored in the clear).");
   };
@@ -105,12 +106,30 @@ export default function KeysPanel() {
   };
 
   const testCall = async () => {
-    setTesting(true); setTestRes(null);
+    setTesting(true); setTestRes(null); setConvStatus(null);
+    let r: any;
     try {
-      setTestRes(await api.testCall());
+      r = await api.testCall();
+      setTestRes(r);
     } catch (e: any) {
       setTestRes({ ok: false, error: e?.message || "request failed" });
-    } finally { setTesting(false); }
+      setTesting(false); return;
+    }
+    setTesting(false);
+    // if the call was accepted, ask ElevenLabs how the conversation actually ended —
+    // this is where "answered then dropped in 1s" (init failure, 0 turns) shows itself
+    const cid = r?.response?.conversation_id || r?.response?.conversationId;
+    if (r.ok && cid) {
+      setConvStatus({ pending: true, note: "checking how the call went…" });
+      for (let i = 0; i < 4; i++) {
+        await new Promise((res) => setTimeout(res, 4000));
+        try {
+          const cs = await api.conversationStatus(cid);
+          setConvStatus(cs);
+          if (cs?.ok && !cs.pending && cs.status && !/initiat|in-progress/i.test(cs.status)) break;
+        } catch { /* keep trying */ }
+      }
+    }
   };
 
   const fields = data?.fields || [];
@@ -193,6 +212,7 @@ export default function KeysPanel() {
             {testing ? <Spinner size={13} /> : "📞"} Test call to my phone
           </button>
           {testRes && <TestResult res={testRes} />}
+          {convStatus && <ConvStatus cs={convStatus} />}
         </div>
       )}
 
@@ -239,6 +259,27 @@ function TestResult({ res }: { res: any }) {
         Most common causes: Twilio <b>Geo-Permissions</b> block your country (enable it in Voice → Settings → Geo permissions),
         a <b>trial</b> Twilio account can only call verified numbers, or the ElevenLabs phone number isn't a live Twilio number.
       </div>
+    </div>
+  );
+}
+
+// ElevenLabs' own verdict on the conversation — the truth for a call that Twilio
+// says "answered, 1 sec": 0 turns + "initialization failed" = the agent config is broken.
+function ConvStatus({ cs }: { cs: any }) {
+  if (cs.pending) return <div className="small" style={{ marginTop: 8 }}>⏳ {cs.note || "checking how the call went…"}</div>;
+  if (!cs.ok) return <div className="small" style={{ marginTop: 8, color: "var(--warn)" }}>Couldn't read the conversation: {cs.error}</div>;
+  const reason = cs.termination_reason || "";
+  const bad = (cs.turns ?? 0) === 0 || /fail/i.test(cs.status || "") || /fail|init/i.test(reason);
+  return (
+    <div className="small" style={{ marginTop: 8, color: bad ? "var(--bad)" : "var(--good)" }}>
+      ElevenLabs verdict: <b>{cs.status || "—"}</b>{reason ? ` · ${reason}` : ""} · {cs.turns ?? 0} turn(s), {cs.duration_secs ?? 0}s.
+      {bad && (cs.turns ?? 0) === 0 && (
+        <div style={{ marginTop: 4 }}>
+          The agent never spoke — this is an <b>agent config</b> problem, not a phone one. In ElevenLabs, open your
+          caller agent → Tools and remove/disable any tool showing a validation error (e.g. transfer / update-state
+          with no rule), then Save.
+        </div>
+      )}
     </div>
   );
 }

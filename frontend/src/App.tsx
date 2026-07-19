@@ -36,7 +36,7 @@ function TopBar() {
   return (
     <div className="topbar">
       <NavLink to="/" className="brand" style={{ textDecoration: "none" }}>
-        <span className="dot" /> <span className="brand-name">The Event Negotiator</span>
+        <span className="dot" /> <span className="brand-name">SayWhen</span>
       </NavLink>
       <nav className="topnav">
         <NavLink to="/" end>Events</NavLink>

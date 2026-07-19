@@ -12,10 +12,10 @@ always-on process, which Render gives and serverless platforms don't.
 
 1. Push this repo to GitHub (or GitLab).
 2. On [render.com](https://render.com): **New → Blueprint**, pick this repo.
-   Render reads `render.yaml` and creates the `event-negotiator` web service.
+   Render reads `render.yaml` and creates the `saywhen` web service.
 3. Click **Apply**. First build takes ~3–5 min (Node builds the frontend, then
    the Python image starts). Watch the logs until it says *Live*.
-4. Open the service URL (e.g. `https://event-negotiator.onrender.com`). Create
+4. Open the service URL (e.g. `https://saywhen.onrender.com`). Create
    an account and start a negotiation — it runs in **simulation mode** with no
    keys needed.
 5. Health check: `https://<your-url>/api/health` should return
@@ -49,7 +49,7 @@ deploy and cold start. That's fine for a demo. For durable data, in
 ## Local sanity check (same image as production)
 
 ```bash
-docker build -t event-negotiator .
-docker run -p 8000:8000 event-negotiator
+docker build -t saywhen .
+docker run -p 8000:8000 saywhen
 # open http://localhost:8000
 ```

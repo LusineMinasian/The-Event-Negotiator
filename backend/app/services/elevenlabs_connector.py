@@ -62,9 +62,16 @@ async def test_outbound_call(agent_phone_number_id: str, to_number: str) -> dict
         "agent_phone_number_id": agent_phone_number_id,
         "to_number": to_number,
         "conversation_initiation_client_data": {
+            # provide the full set a campaign call sends, so the agent's prompt never
+            # references an undefined {{variable}} (a common cause of a 1-second drop)
             "dynamic_variables": {
                 "vendor_name": "Test Vendor",
-                "spec_summary": "a quick test call from The Event Negotiator",
+                "category": "catering",
+                "segment_key": "catering__full_service",
+                "segment_display": "Full-service caterer",
+                "spec_summary": "a quick test call from SayWhen",
+                "campaign_id": "test",
+                "call_id": "test",
             },
         },
     }
@@ -128,6 +135,35 @@ async def get_transcript(conversation_id: str) -> dict:
                              headers={"xi-api-key": settings.elevenlabs_api_key})
         r.raise_for_status()
         return r.json()
+
+
+async def conversation_status(conversation_id: str) -> dict:
+    """Diagnostic: ask ElevenLabs how a conversation actually went — status, how it
+    ended (termination_reason) and how many turns happened. A call that Twilio shows
+    as 'answered, 1 sec' with 0 turns here failed to initialise the agent. Never raises."""
+    if not settings.elevenlabs_api_key:
+        return {"ok": False, "error": "ELEVENLABS_API_KEY not set."}
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(f"{EL_API}/convai/conversations/{conversation_id}",
+                                 headers={"xi-api-key": settings.elevenlabs_api_key})
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"Network error: {exc}"[:300]}
+    if r.status_code == 404:
+        return {"ok": True, "pending": True, "status": "not_ready",
+                "note": "ElevenLabs hasn't logged this conversation yet — retry in a moment."}
+    if r.status_code >= 400:
+        return {"ok": False, "status": r.status_code, "error": (r.text or r.reason_phrase)[:300]}
+    data = r.json()
+    meta = data.get("metadata") or {}
+    turns = len([t for t in (data.get("transcript") or []) if t.get("message")])
+    return {
+        "ok": True,
+        "status": data.get("status", ""),                       # e.g. done | failed | in-progress
+        "termination_reason": meta.get("termination_reason", ""),
+        "duration_secs": meta.get("call_duration_secs", 0),
+        "turns": turns,
+    }
 
 
 def build_dynamic_variables(prompt_ctx: dict) -> dict:

@@ -69,7 +69,7 @@ export default function Overview() {
       <div className="overview-cols">
         <div className="ov-main">
           <div className="section-eyebrow">Overview</div>
-          <h1>The Event Negotiator</h1>
+          <h1>SayWhen</h1>
           <p className="sub" style={{ maxWidth: 640 }}>
             A fleet of voice agents that calls event vendors and negotiates on your behalf — venues,
             catering, florals, photo, music and more. Real connectors are wired in but key-gated, so the

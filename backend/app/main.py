@@ -1,4 +1,4 @@
-"""The Event Negotiator — FastAPI entrypoint."""
+"""SayWhen — FastAPI entrypoint."""
 from __future__ import annotations
 
 import os
@@ -14,7 +14,7 @@ from .db import init_db
 from .routers import (agent_tools, auth, campaigns, config_meta, discovery, events, intake,
                       integrations, settings as settings_router, specs, ws)
 
-app = FastAPI(title="The Event Negotiator", version="1.0.0")
+app = FastAPI(title="SayWhen", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

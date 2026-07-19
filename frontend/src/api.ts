@@ -54,6 +54,7 @@ export const api = {
   behaviorClear: (key: string) =>
     req("DELETE", `/config/segments/${encodeURIComponent(key)}/behavior`),
   testCall: () => req("POST", "/settings/test-call"),
+  conversationStatus: (id: string) => req("GET", `/settings/conversation/${encodeURIComponent(id)}`),
 
   // events + specs
   createEvent: (type: string, region_profile: string) =>

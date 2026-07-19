@@ -61,3 +61,11 @@ async def test_call(user: User = Depends(current_user)):
         settings.elevenlabs_phone_number_id, settings.simulation_phone_number)
     res["to"] = settings.simulation_phone_number
     return res
+
+
+@router.get("/conversation/{conversation_id}")
+async def conversation_status(conversation_id: str, user: User = Depends(current_user)):
+    """After a test call, ask ElevenLabs how the conversation actually ended — this is
+    where a 'answered then dropped in 1s' failure explains itself (0 turns + a
+    termination_reason like agent/init error)."""
+    return await elevenlabs_connector.conversation_status(conversation_id)

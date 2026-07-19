@@ -57,7 +57,7 @@ export default function Receipt() {
       </div>
 
       <div className="rcpt">
-        <div className="rcpt-brand">THE&nbsp;NEGOTIATOR</div>
+        <div className="rcpt-brand">SAYWHEN</div>
         <div className="rcpt-meta">
           {r.event.type.replace("_", " ")} · {r.event.date} · {r.location.city} · {r.event.guest_count} guests
         </div>

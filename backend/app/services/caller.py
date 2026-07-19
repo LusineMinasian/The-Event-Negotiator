@@ -220,16 +220,19 @@ async def run_single_call(campaign_id: str, vendor_id: str, payload: dict,
         # so the demo never stalls.
         if settings.call_mode == "live":
             demo_num = (settings.simulation_phone_number or "").strip()
+            conv = None
             if demo_num:
                 # Hybrid demo: only the one designated call goes live — to YOUR number,
                 # you play this vendor. Every other call stays fully simulated.
                 if is_demo and settings.demo_call_available:
-                    if await _dispatch_live(db, campaign_id, call, vendor, payload, resolved,
-                                            region_key, to_number=demo_num):
-                        return
+                    conv = await _dispatch_live(db, campaign_id, call, vendor, payload, resolved,
+                                                region_key, to_number=demo_num)
             elif settings.live_calls_available:
-                if await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key):
-                    return
+                conv = await _dispatch_live(db, campaign_id, call, vendor, payload, resolved, region_key)
+            if conv is not None:  # dispatched (conv="" if no id) — don't fall back to simulation
+                if conv:
+                    await _poll_live_transcript(db, campaign_id, call, conv)
+                return
 
         region = store.region(region_key)
         consent = store.prompts.get("consent_scripts", {}).get(region.get("consent_script_key", "consent_us"), "")
@@ -395,17 +398,18 @@ async def _maybe_handoff(db, campaign_id, call, vendor, cp, payload, state, ts):
 
 
 async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, payload: dict,
-                         resolved: dict, region_key: str, to_number: str | None = None) -> bool:
+                         resolved: dict, region_key: str, to_number: str | None = None):
     """Place a real outbound call through the ElevenLabs Caller Agent. Tags the call
-    with campaign_id + call_id as dynamic variables so the post-call webhook can route
-    the transcript back to this campaign. Returns True if the live call was accepted.
+    with campaign_id + call_id as dynamic variables so the transcript can route back to
+    this campaign. Returns the conversation_id (str, may be "") on success so the caller
+    can poll it for live transcript, or None if the dial failed (fall back to simulation).
 
     `to_number` overrides the destination — used by the demo call so the agent rings
     your own phone (you play this vendor) instead of dialing the real vendor."""
     store = get_store()
     to = (to_number or vendor.phone_e164 or "").strip()
     if not to:
-        return False
+        return None
     phone_id = settings.elevenlabs_phone_number_id
     dynamic_variables = {
         "campaign_id": campaign_id,
@@ -430,8 +434,9 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
         await bus.publish(campaign_id, "call.phase", {"call_id": call.id, "phase": "dialing"})
         await _say(db, campaign_id, call, "system",
                    f"Live dial failed — {detail[:160]} — using simulation.", 0)
-        return False
-    call.twilio_sid = result.get("conversation_id", result.get("callSid", ""))
+        return None
+    conv_id = result.get("conversation_id") or ""
+    call.twilio_sid = conv_id or result.get("callSid", "")
     call.phase = "dialing"
     db.commit()
     if to_number:
@@ -441,7 +446,53 @@ async def _dispatch_live(db, campaign_id: str, call: Call, vendor: Vendor, paylo
         "call_id": call.id, "vendor_name": vendor.name,
         "conversation_id": call.twilio_sid, "to": to,
     })
-    return True
+    return conv_id
+
+
+async def _poll_live_transcript(db, campaign_id: str, call: Call, conversation_id: str) -> None:
+    """Stream a live ElevenLabs call into the dashboard in near-real-time: poll the
+    conversation and publish each new turn as it appears. Ends the call when ElevenLabs
+    marks it done/failed (or a hard timeout). Keeps the call's task alive so the campaign
+    doesn't finalize until the real call actually ends."""
+    await _set_phase(db, campaign_id, call, "live")
+    seen = 0
+    ended_reason = ""
+    for _ in range(160):  # safety cap ~6-7 min at 2.5s
+        if is_stopped(campaign_id):
+            break
+        await asyncio.sleep(2.5)
+        try:
+            data = await elevenlabs_connector.get_transcript(conversation_id)
+        except Exception:  # noqa: BLE001 — transient; keep polling
+            continue
+        turns = data.get("transcript") or []
+        for i in range(seen, len(turns)):
+            turn = turns[i]
+            role = turn.get("role") or turn.get("speaker") or "vendor"
+            speaker = "agent" if role in ("agent", "assistant", "ai") else "vendor"
+            text = (turn.get("message") or turn.get("text") or "").strip()
+            if not text:
+                continue
+            ts = int(turn.get("time_in_call_secs") or i * 4)
+            u = Utterance(call_id=call.id, ts_s=ts, speaker=speaker, text=text, lever_key="")
+            db.add(u); db.commit()
+            await bus.publish(campaign_id, "utterance", {
+                "call_id": call.id, "speaker": speaker, "text": text, "ts_s": ts,
+                "lever_key": "", "utterance_id": u.id,
+            })
+        seen = len(turns)
+        status = (data.get("status") or "").lower()
+        ended_reason = (data.get("metadata") or {}).get("termination_reason") or ""
+        if status in ("done", "failed", "completed") or ended_reason:
+            break
+    call.status = "completed"
+    call.phase = "closed"
+    call.outcome = "quote" if seen > 0 else "unreachable"
+    call.duration_s = call.duration_s or seen * 4
+    db.commit()
+    await bus.publish(campaign_id, "call.ended", {
+        "call_id": call.id, "outcome": call.outcome, "reason": ended_reason, "quote_total": None,
+    })
 
 
 def _forced_outcome(vendor: Vendor) -> str:

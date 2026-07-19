@@ -1,4 +1,4 @@
-# The Event Negotiator — single-service image for Render.
+# SayWhen — single-service image for Render.
 # Stage 1 builds the Vite frontend; stage 2 runs FastAPI and serves that build
 # plus the API and WebSocket from one origin (no CORS, no hardcoded URLs).
 

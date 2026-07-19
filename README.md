@@ -1,4 +1,4 @@
-# The Event Negotiator
+# SayWhen
 
 **Voice agents that call the market, compare, and haggle for your event.**
 Challenge 01 — *The Negotiator* · ElevenLabs × Hack-Nation · 6th Global AI Hackathon.
@@ -55,8 +55,8 @@ build ~3–5 min. Health check: `https://<url>/api/health`. It comes up in **sim
 
 **Local (same image as prod):**
 ```bash
-docker build -t event-negotiator .
-docker run -p 8000:8000 event-negotiator   # → http://localhost:8000
+docker build -t saywhen .
+docker run -p 8000:8000 saywhen   # → http://localhost:8000
 ```
 
 **Going live / durable data / troubleshooting** (incl. the classic *403 when the platform clones a public

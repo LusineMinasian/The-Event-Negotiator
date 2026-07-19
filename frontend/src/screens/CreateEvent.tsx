@@ -246,9 +246,10 @@ export default function CreateEvent() {
   const money = (n: number) => `${cur.symbol}${Math.round(n).toLocaleString()}`;
   const perGuest = guests > 0 ? Math.round(budget / guests) : 0;
   const today = new Date().toISOString().slice(0, 10);
-  // budget can be typed directly or dragged; both drive `budget` (local currency)
+  // budget can be typed directly or dragged; both drive `budget` (local currency).
+  // The slider's max grows to fit a typed-over-max amount so typing never snaps back.
   const budgetLo = 1000 * cur.scale;
-  const budgetHi = (BUDGET_MAX[type] || 40000) * cur.scale;
+  const budgetHi = Math.max((BUDGET_MAX[type] || 40000) * cur.scale, budget);
   const budgetShown = budgetFocus ? String(Math.round(budget)) : Math.round(budget).toLocaleString();
 
   return (
@@ -456,9 +457,9 @@ export default function CreateEvent() {
                 <input className="budget-input" inputMode="numeric" aria-label="Budget ceiling"
                        value={budgetShown} style={{ width: `${Math.max(budgetShown.length, 1)}ch` }}
                        onFocus={(e) => { setBudgetFocus(true); requestAnimationFrame(() => e.target.select()); }}
-                       onBlur={() => { setBudgetFocus(false); setBudget((b) => Math.min(budgetHi, Math.max(budgetLo, Math.round(b)))); }}
+                       onBlur={() => { setBudgetFocus(false); setBudget((b) => Math.max(0, Math.round(b))); }}
                        onChange={(e) => { const n = parseInt(e.target.value.replace(/[^\d]/g, ""), 10);
-                                          setBudget(Number.isNaN(n) ? 0 : Math.min(budgetHi, n)); }} />
+                                          setBudget(Number.isNaN(n) ? 0 : n); }} />
               </div>
               <div className="small" style={{ textAlign: "center", marginBottom: 18 }}>≈ {money(perGuest)} per guest · {guests} guests · type or drag</div>
               <input type="range" className="range" min={budgetLo}

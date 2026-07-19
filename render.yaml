@@ -3,7 +3,7 @@
 # Deploy: push this repo to GitHub, then Render → New → Blueprint.
 services:
   - type: web
-    name: event-negotiator
+    name: saywhen
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free

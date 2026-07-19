@@ -56,7 +56,7 @@ def draw_brief(b):
     d.text((M + 18, 50), "EVENT PLANNING BRIEF", font=font(15), fill=VIOLET)
     # title
     d.text((M, 92), b["title"], font=font(52), fill=INK, stroke_width=1, stroke_fill=INK)
-    d.text((M, 162), "Prepared for The Event Negotiator", font=font(18), fill=MUTED)
+    d.text((M, 162), "Prepared for SayWhen", font=font(18), fill=MUTED)
     y = 214
     money = f'{b["symbol"]}{b["guest_count"] and format(b["budget"], ",")}'
     rows = [
